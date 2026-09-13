@@ -1,0 +1,425 @@
+╔════════════════════════════════════════════════════════════════════════════╗
+║                   CI/CD WORKFLOW NAMING CONVENTION                         ║
+║                         VISUAL GUIDE & EXAMPLES                            ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+
+╭─────────────────────────────────────────────────────────────────────────────╮
+│ CORE PATTERN                                                                 │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│   [CATEGORY]-[PURPOSE]-[TRIGGER]-[FREQUENCY].yml                            │
+│                                                                              │
+│   Example:  ci-test-push-per-commit.yml                                    │
+│              │   │     │    │                                              │
+│              │   │     │    └─ How often: per-commit                       │
+│              │   │     └─────── When: push event                           │
+│              │   └──────────── What: test                                  │
+│              └─────────────── Type: ci (continuous integration)            │
+│                                                                              │
+╰─────────────────────────────────────────────────────────────────────────────╯
+
+
+╭─────────────────────────────────────────────────────────────────────────────╮
+│ COMPONENT BREAKDOWN                                                         │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  CATEGORY (Pick One)                                                       │
+│  ─────────────────────                                                     │
+│  ✓ ci            → Continuous Integration (tests, lint, type-check)        │
+│  ✓ cd            → Continuous Deployment (build, push, deploy)             │
+│  ✓ security      → Security & Compliance (scanning, audits)                │
+│  ✓ analysis      → Code Analysis (metrics, benchmarks)                     │
+│  ✓ maintenance   → Operations (cleanup, updates)                           │
+│  ✓ setup         → Configuration & Setup                                   │
+│                                                                              │
+│  PURPOSE (Be Specific)                                                     │
+│  ──────────────────────                                                    │
+│  ✓ test          → Run test suite                                          │
+│  ✓ lint          → Code quality checks                                     │
+│  ✓ type-check    → TypeScript validation                                   │
+│  ✓ build         → Compile/build                                           │
+│  ✓ build-push    → Build AND push to registry                              │
+│  ✓ deploy        → Deployment                                              │
+│  ✓ scan          → Security/dependency scanning                            │
+│  ✓ validate      → General validation                                      │
+│                                                                              │
+│  TRIGGER (When It Runs)                                                    │
+│  ──────────────────────                                                    │
+│  ✓ push          → Every commit (git push)                                 │
+│  ✓ pr            → Pull request event                                      │
+│  ✓ tag           → Git tag push (releases)                                 │
+│  ✓ manual        → User clicks "Run workflow"                              │
+│  ✓ scheduled     → Cron schedule (time-based)                              │
+│  ✓ multi         → Multiple event types                                    │
+│                                                                              │
+│  FREQUENCY (How Often)                                                     │
+│  ─────────────────────                                                     │
+│  ✓ per-commit    → Every git push (multiple times daily)                   │
+│  ✓ per-pr        → Each pull request update                                │
+│  ✓ hourly        → Every hour                                              │
+│  ✓ nightly       → Once per night (2-4 AM)                                 │
+│  ✓ weekly        → Once per week                                           │
+│  ✓ monthly       → Once per month                                          │
+│  ✓ on-demand     → Manual trigger only                                     │
+│                                                                              │
+╰─────────────────────────────────────────────────────────────────────────────╯
+
+
+╭─────────────────────────────────────────────────────────────────────────────╮
+│ REAL EXAMPLES - BEFORE & AFTER                                             │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  EXAMPLE 1: Test Suite Workflow                                            │
+│  ─────────────────────────────────                                         │
+│                                                                              │
+│  ❌ BEFORE:  ci.yml                                                        │
+│     Problem: Way too generic! Could be anything.                           │
+│               Doesn't tell you what runs or when.                          │
+│                                                                              │
+│  ✅ AFTER:   ci-test-multi-per-commit.yml                                  │
+│     Benefits: ➤ Immediately clear it runs tests                            │
+│              ➤ "multi" shows multiple triggers (push + PR + manual)       │
+│              ➤ "per-commit" shows it runs frequently                      │
+│              ➤ Easy to find when sorted alphabetically                    │
+│                                                                              │
+│  What it does:                                                             │
+│   • Runs comprehensive test suite                                          │
+│   • Triggered by: git push + pull request + manual                        │
+│   • Frequency: Multiple times per day                                      │
+│   • Duration: 10-20 minutes                                                │
+│                                                                              │
+│  ─────────────────────────────────────────────────────────────────────────│
+│                                                                              │
+│  EXAMPLE 2: Docker Build & Push                                            │
+│  ──────────────────────────────                                            │
+│                                                                              │
+│  ❌ BEFORE:  cd-with-dockerhub.yml                                         │
+│     Problem: "with-dockerhub" is unclear.                                  │
+│               Doesn't explain what actually happens.                       │
+│               Trigger condition not obvious from name.                     │
+│                                                                              │
+│  ✅ AFTER:   cd-build-push-tag-on-demand.yml                               │
+│     Benefits: ➤ Clear: builds AND pushes Docker images                    │
+│              ➤ "tag" shows it's tag-triggered (semver releases)           │
+│              ➤ "on-demand" clarifies it's developer-initiated             │
+│              ➤ Distinguishes from other CD workflows                      │
+│                                                                              │
+│  What it does:                                                             │
+│   • Builds multi-platform Docker images                                    │
+│   • Pushes to GHCR and Docker Hub                                          │
+│   • Triggered by: git tag push (v*.*)                                      │
+│   • Frequency: On-demand (when developer tags release)                     │
+│   • Duration: 10-30 minutes                                                │
+│                                                                              │
+│  ─────────────────────────────────────────────────────────────────────────│
+│                                                                              │
+│  EXAMPLE 3: Quick Validation                                               │
+│  ───────────────────────────                                               │
+│                                                                              │
+│  ❌ BEFORE:  fast-track.yml                                                │
+│     Problem: "Fast-track" is domain-specific jargon.                       │
+│               New team members won't understand what it does.              │
+│               No indication of when it runs.                               │
+│                                                                              │
+│  ✅ AFTER:   ci-validation-pr-per-pr.yml                                   │
+│     Benefits: ➤ Clear purpose: validation (lint, type-check, etc.)        │
+│              ➤ "pr" shows primary trigger (pull requests)                 │
+│              ➤ "per-pr" indicates it runs on every PR update              │
+│              ➤ Obvious this is a code review gate                         │
+│                                                                              │
+│  What it does:                                                             │
+│   • Runs quick validation (lint, type-check, etc.)                         │
+│   • Triggered by: pull request + push + manual                            │
+│   • Frequency: Per pull request (primary) or per commit                   │
+│   • Duration: 5-10 minutes                                                 │
+│                                                                              │
+│  ─────────────────────────────────────────────────────────────────────────│
+│                                                                              │
+│  EXAMPLE 4: Manual Deployment                                              │
+│  ───────────────────────────────                                           │
+│                                                                              │
+│  ❌ BEFORE:  cd.yml                                                        │
+│     Problem: Doesn't indicate it's a deployment.                           │
+│               No indication it's manual/on-demand.                         │
+│               Could be any CD operation.                                   │
+│                                                                              │
+│  ✅ AFTER:   cd-deploy-manual-on-demand.yml                                │
+│     Benefits: ➤ Crystal clear: this is a deployment                       │
+│              ➤ "manual" shows it requires human action                    │
+│              ➤ "on-demand" clarifies no auto-triggers                     │
+│              ➤ Distinguishes from automatic release pipelines             │
+│                                                                              │
+│  What it does:                                                             │
+│   • Performs manual deployments                                            │
+│   • Triggered by: workflow_dispatch (manual button)                        │
+│   • Frequency: On-demand (operator initiated)                              │
+│   • Duration: 20-60 minutes (multi-stage)                                  │
+│                                                                              │
+│  ─────────────────────────────────────────────────────────────────────────│
+│                                                                              │
+│  EXAMPLE 5: Release Validation                                             │
+│  ───────────────────────────────                                           │
+│                                                                              │
+│  ❌ BEFORE:  fast-track-tag-release.yml                                    │
+│     Problem: "Fast-track" + "release" is somewhat clear                    │
+│               but "fast-track" is undefined jargon.                        │
+│               Doesn't explain it's validation, not deployment.             │
+│                                                                              │
+│  ✅ AFTER:   cd-release-validation-tag-on-demand.yml                       │
+│     Benefits: ➤ Explicit: this is release validation (not deployment)     │
+│              ➤ "tag" shows it's tag-triggered                             │
+│              ➤ "on-demand" shows developer initiates                      │
+│              ➤ Distinguished from cd-build-push-tag-on-demand              │
+│                                                                              │
+│  What it does:                                                             │
+│   • Validates release before deployment                                    │
+│   • Runs syntax checks, tests, docker-compose verification                │
+│   • Triggered by: git tag push (release tags)                              │
+│   • Frequency: On-demand (developer-initiated)                             │
+│   • Duration: 10-15 minutes                                                │
+│                                                                              │
+│  ─────────────────────────────────────────────────────────────────────────│
+│                                                                              │
+│  EXAMPLE 6: Environment Setup                                              │
+│  ──────────────────────────────                                            │
+│                                                                              │
+│  ❌ BEFORE:  copilot-setup-steps.yml                                       │
+│     Problem: Not clear this is workflow setup (not test/deploy).           │
+│               Unclear when it triggers.                                    │
+│               Belongs in different category than CI/CD.                    │
+│                                                                              │
+│  ✅ AFTER:   setup-copilot-multi-on-demand.yml                             │
+│     Benefits: ➤ "setup" category distinguishes from CI/CD                 │
+│              ➤ Copilot-specific purpose is clear                          │
+│              ➤ "multi" shows multiple triggers                            │
+│              ➤ Alphabetically sorts separately (setup-*)                  │
+│                                                                              │
+│  What it does:                                                             │
+│   • Configures Copilot environment                                         │
+│   • Triggered by: push + PR + manual                                       │
+│   • Frequency: Per-commit + on-demand                                      │
+│   • Duration: 2-5 minutes                                                  │
+│                                                                              │
+╰─────────────────────────────────────────────────────────────────────────────╯
+
+
+╭─────────────────────────────────────────────────────────────────────────────╮
+│ YOUR PROJECT: MIGRATION SUMMARY                                             │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  6 workflows → 6 standardized names                                        │
+│                                                                              │
+│  OLD NAME                          → NEW NAME                              │
+│  ────────────────────────────────────────────────────────────────────────  │
+│  ci.yml                            → ci-test-multi-per-commit.yml         │
+│  fast-track.yml                    → ci-validation-pr-per-pr.yml          │
+│  cd.yml                            → cd-deploy-manual-on-demand.yml       │
+│  cd-with-dockerhub.yml             → cd-build-push-tag-on-demand.yml      │
+│  fast-track-tag-release.yml        → cd-release-validation-tag-on-demand.yml
+│  copilot-setup-steps.yml           → setup-copilot-multi-on-demand.yml    │
+│                                                                              │
+│  Alphabetically sorted (after rename):                                     │
+│  ─────────────────────────────────────                                     │
+│  1. cd-build-push-tag-on-demand.yml                 (all CD workflows)     │
+│  2. cd-deploy-manual-on-demand.yml                                         │
+│  3. cd-release-validation-tag-on-demand.yml                                │
+│  4. ci-test-multi-per-commit.yml                    (all CI workflows)     │
+│  5. ci-validation-pr-per-pr.yml                                            │
+│  6. setup-copilot-multi-on-demand.yml               (setup workflows)      │
+│                                                                              │
+│  ✅ Much better organization!                                              │
+│  ✅ Related workflows group together                                        │
+│  ✅ Purpose immediately clear from filename                                │
+│                                                                              │
+╰─────────────────────────────────────────────────────────────────────────────╯
+
+
+╭─────────────────────────────────────────────────────────────────────────────╮
+│ COMMON NAMING MISTAKES                                                      │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  ❌ ci_test.yml                                                            │
+│     Why wrong: Uses underscore (use hyphens). Too generic.                 │
+│     ✅ Correct: ci-test-push-per-commit.yml                                │
+│                                                                              │
+│  ❌ build-and-test.yml                                                     │
+│     Why wrong: No category prefix. Doesn't show trigger/frequency.         │
+│     ✅ Correct: ci-test-push-per-commit.yml                                │
+│                                                                              │
+│  ❌ deploy.yml                                                             │
+│     Why wrong: Too generic. Missing trigger/frequency context.             │
+│     ✅ Correct: cd-deploy-manual-on-demand.yml                             │
+│                                                                              │
+│  ❌ test.yml                                                               │
+│     Why wrong: Could be anything. No context at all.                       │
+│     ✅ Correct: ci-test-push-per-commit.yml                                │
+│                                                                              │
+│  ❌ github-actions-ci-test.yml                                             │
+│     Why wrong: Redundant "github-actions" prefix. Too long.                │
+│     ✅ Correct: ci-test-push-per-commit.yml                                │
+│                                                                              │
+│  ❌ ci-nightly-test.yml                                                    │
+│     Why wrong: Trigger before frequency (should be test-push-nightly)     │
+│     ✅ Correct: ci-test-scheduled-nightly.yml                              │
+│                                                                              │
+╰─────────────────────────────────────────────────────────────────────────────╯
+
+
+╭─────────────────────────────────────────────────────────────────────────────╮
+│ HOW TO NAME A NEW WORKFLOW - DECISION FLOWCHART                             │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│                                START                                        │
+│                                  │                                         │
+│                    What type of workflow is this?                          │
+│                          /  |  |  |  \                                     │
+│                         /   |  |  |   \                                    │
+│                   Test  /  |  |  |  Deploy Setup                          │
+│                   Lint  |  |  |  |  Security                              │
+│                        │  │  │  │  Analysis                               │
+│                       ─┴──┴──┴──┴─ Maintenance                             │
+│                             │                                              │
+│                 ┌───────────┼───────────┐                                 │
+│                 ▼           ▼           ▼                                 │
+│              Pick CATEGORY (ci, cd, security, analysis,                  │
+│                             maintenance, or setup)                        │
+│                 │                                                         │
+│         What specifically does it do?                                    │
+│    test, lint, build, deploy, scan, etc.                                │
+│                 │                                                         │
+│         ┌───────────────────┬──────────────┐                             │
+│         ▼                   ▼              ▼                             │
+│    PICK PURPOSE           (be specific)                                  │
+│                 │                                                         │
+│         When does it trigger?                                            │
+│    git push, pull request, tag, cron, manual                            │
+│                 │                                                         │
+│    ┌────────────┼────────────┬─────────────┬─────────┐                   │
+│    ▼            ▼            ▼             ▼         ▼                   │
+│   PUSH          PR           TAG         MANUAL   SCHEDULED              │
+│                 │                                                         │
+│    How frequently?                                                       │
+│  per-commit  per-pr  hourly  nightly  weekly  monthly  on-demand        │
+│                 │                                                         │
+│                 ▼                                                         │
+│    FILENAME COMPLETE!                                                    │
+│    [category]-[purpose]-[trigger]-[frequency].yml                        │
+│                                                                              │
+╰─────────────────────────────────────────────────────────────────────────────╯
+
+
+╭─────────────────────────────────────────────────────────────────────────────╮
+│ QUICK VALIDATION CHECKLIST                                                 │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  Before finalizing a workflow name, verify:                               │
+│                                                                              │
+│  ☐ Category is clear                                                      │
+│    (ci, cd, security, analysis, maintenance, or setup)                    │
+│                                                                              │
+│  ☐ Purpose is specific                                                    │
+│    (test, lint, deploy, scan, etc. - not just "run")                     │
+│                                                                              │
+│  ☐ Trigger is explicit                                                    │
+│    (push, pr, tag, manual, scheduled, or multi)                          │
+│                                                                              │
+│  ☐ Frequency is accurate                                                  │
+│    (per-commit, per-pr, nightly, weekly, on-demand, etc.)                │
+│                                                                              │
+│  ☐ Name is concise (aim for ≤50 characters)                              │
+│                                                                              │
+│  ☐ Uses lowercase with hyphens (no underscores or camelCase)             │
+│                                                                              │
+│  ☐ No ambiguity (same filename = same meaning to anyone)                 │
+│                                                                              │
+│  ☐ Alphabetical grouping makes sense                                     │
+│    (ci-*, cd-*, security-* all group together)                           │
+│                                                                              │
+╰─────────────────────────────────────────────────────────────────────────────╯
+
+
+╭─────────────────────────────────────────────────────────────────────────────╮
+│ TIPS FOR SUCCESS                                                            │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  💡 Start with category - it's the most important part                    │
+│                                                                              │
+│  💡 Be specific about purpose (test, not build; scan, not run)            │
+│                                                                              │
+│  💡 Include trigger so others know when it runs                           │
+│                                                                              │
+│  💡 Specify frequency to manage execution expectations                    │
+│                                                                              │
+│  💡 Keep names readable (hyphens are your friend)                         │
+│                                                                              │
+│  💡 Group related workflows by naming them similarly                      │
+│                                                                              │
+│  💡 Use consistent terminology across all workflows                       │
+│                                                                              │
+│  💡 Document your convention in README for new team members               │
+│                                                                              │
+╰─────────────────────────────────────────────────────────────────────────────╯
+
+
+╭─────────────────────────────────────────────────────────────────────────────╮
+│ REFERENCE TABLES                                                            │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  CATEGORIES & EXAMPLES                                                    │
+│  ─────────────────────────                                                │
+│  ci              ci-test-push-per-commit.yml                              │
+│                  ci-lint-pr-per-pr.yml                                    │
+│                  ci-type-check-push-per-commit.yml                        │
+│                                                                              │
+│  cd              cd-build-push-tag-on-demand.yml                          │
+│                  cd-deploy-manual-on-demand.yml                           │
+│                  cd-release-validation-tag-on-demand.yml                  │
+│                                                                              │
+│  security        security-sast-push-nightly.yml                           │
+│                  security-deps-scan-scheduled-weekly.yml                  │
+│                                                                              │
+│  analysis        analysis-coverage-report-pr-per-pr.yml                   │
+│                  analysis-benchmarks-scheduled-weekly.yml                 │
+│                                                                              │
+│  maintenance     maintenance-cache-cleanup-scheduled-weekly.yml           │
+│                  maintenance-deps-update-scheduled-weekly.yml             │
+│                                                                              │
+│  setup           setup-copilot-multi-on-demand.yml                        │
+│                  setup-env-manual-on-demand.yml                           │
+│                                                                              │
+│  ─────────────────────────────────────────────────────────────────────────│
+│                                                                              │
+│  TRIGGERS & WHEN THEY FIRE                                                │
+│  ──────────────────────────                                               │
+│  push        Every git push to branch                                     │
+│  pr          Pull request opened or updated                               │
+│  tag         Git tag is pushed (usually versions)                         │
+│  manual      User clicks "Run workflow" button                            │
+│  scheduled   Cron schedule (time-based)                                   │
+│  multi       Combines multiple triggers                                   │
+│                                                                              │
+│  ─────────────────────────────────────────────────────────────────────────│
+│                                                                              │
+│  FREQUENCIES & CADENCE                                                    │
+│  ─────────────────────────                                                │
+│  per-commit   Every git push (multiple times daily)                       │
+│  per-pr       Each pull request update                                    │
+│  hourly       Every hour (24x per day)                                    │
+│  nightly      Once per night (typically 2-4 AM)                          │
+│  weekly       Once per week (usually Sunday/Monday)                       │
+│  monthly      Once per month (1st or 15th)                                │
+│  on-demand    Manual trigger only (operator initiated)                    │
+│                                                                              │
+╰─────────────────────────────────────────────────────────────────────────────╯
+
+
+═══════════════════════════════════════════════════════════════════════════════
+
+For complete documentation, see:
+  → CI_CD_NAMING_CONVENTION.md (comprehensive guide)
+  → WORKFLOW_RENAMING_GUIDE.md (implementation plan)
+  → WORKFLOW_NAMING_QUICK_REFERENCE.md (one-page cheat sheet)
+
+Version: 1.0 | Date: 2026-09-14 | Status: Ready for Adoption
+═══════════════════════════════════════════════════════════════════════════════

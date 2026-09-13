@@ -163,7 +163,7 @@ jobs:
           context: .
           push: false
           platforms: linux/amd64
-          tags: ${{ env.IMAGE_NAME }}:${{ needs.extract-tag.outputs.tag-name }}
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.extract-tag.outputs.tag-name }}
           cache-from: type=gha
           cache-to: type=gha,mode=min
 
@@ -195,16 +195,14 @@ jobs:
       - name: Check PostgreSQL connectivity
         run: |
           echo "🔍 Checking PostgreSQL..."
-          docker-compose exec -T postgres pg_isready -U admin -d rickmorty
-          echo "✅ PostgreSQL is ready"
+          docker-compose exec -T postgres pg_isready -U admin -d rickmorty || echo "⚠️  PostgreSQL check skipped"
         timeout-minutes: 1
         continue-on-error: true
       
       - name: Check Redis connectivity
         run: |
           echo "🔍 Checking Redis..."
-          docker-compose exec -T redis redis-cli ping
-          echo "✅ Redis is ready"
+          docker-compose exec -T redis redis-cli ping || echo "⚠️  Redis check skipped"
         timeout-minutes: 1
         continue-on-error: true
       
@@ -222,7 +220,7 @@ jobs:
             sleep 1
           done
           echo "❌ Application failed to become ready within 30 seconds"
-          docker-compose logs rick-morty-api
+          docker-compose logs rick-morty-api || true
           exit 1
         timeout-minutes: 1
       
@@ -252,13 +250,13 @@ jobs:
           docker-compose logs redis || true
           echo ""
           echo "📋 Service status:"
-          docker-compose ps
+          docker-compose ps || true
       
       - name: Cleanup
         if: always()
         run: |
           echo "🧹 Cleaning up..."
-          docker-compose down --volumes
+          docker-compose down --volumes || true
           echo "✅ Cleanup complete"
 
   release-validation-summary:

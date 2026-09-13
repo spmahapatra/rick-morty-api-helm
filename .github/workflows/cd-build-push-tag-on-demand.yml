@@ -1,0 +1,142 @@
+name: CD Pipeline - Docker Hub Push
+
+on:
+  create:
+    tags: [ 'v*' ]
+  workflow_dispatch:
+
+env:
+  GHCR_REGISTRY: ghcr.io
+  DOCKERHUB_REGISTRY: docker.io
+  GHCR_IMAGE: ${{ github.repository }}
+  DOCKERHUB_IMAGE: rick-morty-api
+
+concurrency:
+  group: cd-build-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verify-tag:
+    name: Verify Tag
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    outputs:
+      tag-name: ${{ steps.extract.outputs.tag-name }}
+      tag-version: ${{ steps.extract.outputs.tag-version }}
+      is-valid: ${{ steps.validate.outputs.is-valid }}
+    
+    steps:
+      - name: Extract tag name
+        id: extract
+        run: |
+          TAG_NAME="${{ github.ref }}"
+          TAG_NAME="${TAG_NAME#refs/tags/}"
+          TAG_VERSION="${TAG_NAME#v}"
+          echo "tag-name=$TAG_NAME" >> $GITHUB_OUTPUT
+          echo "tag-version=$TAG_VERSION" >> $GITHUB_OUTPUT
+          echo "✅ Tag: $TAG_NAME (version: $TAG_VERSION)"
+      
+      - name: Validate semantic version format
+        id: validate
+        run: |
+          TAG_NAME="${{ steps.extract.outputs.tag-name }}"
+          if [[ "$TAG_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9]+)?$ ]]; then
+            echo "is-valid=true" >> $GITHUB_OUTPUT
+            echo "✅ Valid semver: $TAG_NAME"
+          else
+            echo "is-valid=false" >> $GITHUB_OUTPUT
+            echo "❌ Invalid format. Expected: v{major}.{minor}.{patch}"
+            exit 1
+          fi
+
+  build-push:
+    name: Build & Push Images
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [verify-tag]
+    if: needs.verify-tag.outputs.is-valid == 'true'
+    
+    permissions:
+      contents: read
+      packages: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up QEMU for multi-platform builds
+        uses: docker/setup-qemu-action@v2
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      
+      - name: Login to GHCR
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ env.GHCR_REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ env.DOCKERHUB_REGISTRY }}
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      
+      - name: Build and Push (GHCR + Docker Hub)
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: |
+            ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE }}:${{ needs.verify-tag.outputs.tag-name }}
+            ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE }}:latest
+            ${{ env.DOCKERHUB_REGISTRY }}/${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKERHUB_IMAGE }}:${{ needs.verify-tag.outputs.tag-name }}
+            ${{ env.DOCKERHUB_REGISTRY }}/${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKERHUB_IMAGE }}:latest
+          labels: |
+            org.opencontainers.image.title=rick-morty-api
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.version=${{ needs.verify-tag.outputs.tag-version }}
+            org.opencontainers.image.revision=${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  report:
+    name: Report Status
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    needs: [verify-tag, build-push]
+    if: always()
+    
+    steps:
+      - name: Report success
+        if: needs.build-push.result == 'success'
+        run: |
+          echo "╔════════════════════════════════════════════════╗"
+          echo "║  ✅ BUILD & PUSH SUCCESSFUL                   ║"
+          echo "╚════════════════════════════════════════════════╝"
+          echo ""
+          echo "📦 Images pushed:"
+          echo ""
+          echo "GHCR:"
+          echo "  ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE }}:${{ needs.verify-tag.outputs.tag-name }}"
+          echo "  ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE }}:latest"
+          echo ""
+          echo "Docker Hub:"
+          echo "  ${{ env.DOCKERHUB_REGISTRY }}/${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKERHUB_IMAGE }}:${{ needs.verify-tag.outputs.tag-name }}"
+          echo "  ${{ env.DOCKERHUB_REGISTRY }}/${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKERHUB_IMAGE }}:latest"
+          echo ""
+          echo "Pull with:"
+          echo "  docker pull ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKERHUB_IMAGE }}:${{ needs.verify-tag.outputs.tag-name }}"
+      
+      - name: Report failure
+        if: needs.build-push.result == 'failure'
+        run: |
+          echo "╔════════════════════════════════════════════════╗"
+          echo "║  ❌ BUILD & PUSH FAILED                        ║"
+          echo "╚════════════════════════════════════════════════╝"
+          echo ""
+          echo "⚠️  Check logs above for details"
+          exit 1

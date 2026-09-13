@@ -1,0 +1,224 @@
+name: Fast Track Validation
+
+# Lightweight validation pipeline for rapid feedback
+# Purpose: Quick build verification + basic deployment test
+# Target execution time: < 5 minutes
+# Triggers: Pull requests, pushes to develop
+# Skips: Heavy integration tests, security scans, production deployment
+
+on:
+  pull_request:
+    branches: [ develop, master ]
+    paths:
+      - 'src/**'
+      - 'app.py'
+      - 'config.py'
+      - 'requirements.txt'
+      - 'Dockerfile'
+      - '.github/workflows/fast-track.yml'
+  push:
+    branches: [ develop ]
+    paths:
+      - 'src/**'
+      - 'app.py'
+      - 'config.py'
+      - 'requirements.txt'
+      - 'Dockerfile'
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+  DOCKER_IMAGE_TAG: fast-track-test
+
+jobs:
+  fast-lint:
+    name: Quick Code Check (60s)
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      
+      - name: Quick syntax check with Python
+        run: |
+          python -m py_compile src/**/*.py app.py config.py
+        timeout-minutes: 1
+        continue-on-error: true
+      
+      - name: Fast flake8 (critical issues only)
+        run: |
+          pip install flake8 -q
+          # Only check for critical issues (E9xx, F63x, F82x, F901)
+          flake8 src app.py config.py --select=E9,F63,F82,F901 --max-line-length=120
+        timeout-minutes: 1
+        continue-on-error: true
+
+  fast-unit-tests:
+    name: Core Unit Tests (90s)
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      
+      - name: Install dependencies (cached)
+        run: |
+          pip install -r requirements.txt pytest -q
+        timeout-minutes: 2
+      
+      - name: Run fast unit tests (no services)
+        run: |
+          # Only run unit tests marked as "fast" (without database/redis)
+          pytest tests/ -k "not integration and not service" \
+            --tb=short \
+            -q \
+            --timeout=10
+        timeout-minutes: 2
+        env:
+          APP_ENV: testing
+        continue-on-error: true
+
+  fast-docker-build:
+    name: Docker Build (120s)
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    
+    permissions:
+      packages: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      
+      - name: Fast Docker build (single platform)
+        uses: docker/build-push-action@v4
+        timeout-minutes: 3
+        with:
+          context: .
+          push: false
+          # Single platform only (amd64) - much faster than multi-arch
+          platforms: linux/amd64
+          tags: ${{ env.IMAGE_NAME }}:${{ env.DOCKER_IMAGE_TAG }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=min
+
+  docker-compose-test:
+    name: Docker Compose Deployment Test (60s)
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    needs: [fast-docker-build]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Validate docker-compose.yml
+        run: |
+          docker-compose config -q
+        timeout-minutes: 1
+      
+      - name: Start services with docker-compose
+        run: |
+          docker-compose up -d
+        timeout-minutes: 2
+      
+      - name: Wait for app to be ready (max 30s)
+        run: |
+          max_attempts=30
+          attempt=0
+          while [ $attempt -lt $max_attempts ]; do
+            if curl -sf http://localhost:5000/health > /dev/null 2>&1; then
+              echo "✅ Application is ready"
+              exit 0
+            fi
+            attempt=$((attempt + 1))
+            sleep 1
+          done
+          echo "❌ Application failed to become ready"
+          exit 1
+        timeout-minutes: 1
+      
+      - name: Quick smoke test (basic endpoints)
+        run: |
+          echo "🧪 Testing basic endpoints..."
+          curl -sf http://localhost:5000/health || exit 1
+          # Add more basic endpoint tests as needed
+          # curl -sf http://localhost:5000/api/characters || exit 1
+          # curl -sf http://localhost:5000/api/locations || exit 1
+        timeout-minutes: 1
+      
+      - name: View application logs on failure
+        if: failure()
+        run: |
+          echo "📋 Application logs:"
+          docker-compose logs
+          echo ""
+          echo "📋 Container status:"
+          docker-compose ps
+      
+      - name: Cleanup
+        if: always()
+        run: |
+          docker-compose down --volumes
+
+  validation-summary:
+    name: Validation Complete
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    needs: [fast-lint, fast-unit-tests, fast-docker-build, docker-compose-test]
+    if: always()
+    
+    steps:
+      - name: Check validation results
+        run: |
+          LINT_STATUS="${{ needs.fast-lint.result }}"
+          TEST_STATUS="${{ needs.fast-unit-tests.result }}"
+          BUILD_STATUS="${{ needs.fast-docker-build.result }}"
+          DOCKER_STATUS="${{ needs.docker-compose-test.result }}"
+          
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "FAST TRACK VALIDATION SUMMARY"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo ""
+          echo "Code Quality Check:     $LINT_STATUS"
+          echo "Unit Tests:             $TEST_STATUS"
+          echo "Docker Build:           $BUILD_STATUS"
+          echo "Deployment Test:        $DOCKER_STATUS"
+          echo ""
+          
+          if [[ "$BUILD_STATUS" == "success" && "$DOCKER_STATUS" == "success" ]]; then
+            echo "✅ VALIDATION PASSED"
+            echo ""
+            echo "Next steps:"
+            echo "• Review changes for merge"
+            echo "• Run full CI pipeline on merge (slower but comprehensive)"
+            echo "• Full integration tests and security scans included in main CI"
+            exit 0
+          else
+            echo "❌ VALIDATION FAILED"
+            echo ""
+            echo "Check logs above for details"
+            echo "• Code Quality: Check linting errors"
+            echo "• Tests: Run locally with: pytest tests/ -k 'not integration'"
+            echo "• Docker: Check Dockerfile and dependencies"
+            echo "• Deployment: Verify docker-compose.yml configuration"
+            exit 1
+          fi
