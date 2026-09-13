@@ -112,17 +112,18 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       
-      - name: Extract metadata
-        id: meta
-        uses: docker/metadata-action@v4
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          tags: |
-            type=ref,event=branch
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=sha,prefix={{branch}}-
-            type=raw,value=latest,enable={{is_default_branch}}
+       - name: Extract metadata
+         id: meta
+         uses: docker/metadata-action@v4
+         with:
+           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+           tags: |
+             type=ref,event=branch
+             type=semver,pattern={{version}},enable=${{ github.ref_type == 'tag' }}
+             type=semver,pattern={{major}}.{{minor}},enable=${{ github.ref_type == 'tag' }}
+             type=semver,pattern={{major}},enable=${{ github.ref_type == 'tag' }}
+             type=sha,prefix=commit-
+             type=raw,value=latest,enable={{is_default_branch}}
       
       - name: Build and push Docker image
         id: build
