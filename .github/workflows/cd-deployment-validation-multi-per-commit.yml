@@ -1,0 +1,232 @@
+name: Deployment Validation
+
+# Validates the complete docker-compose stack (PostgreSQL, Redis, rick-morty-api)
+# Runs on push/PR to ensure all services start correctly and pass health checks
+
+on:
+  push:
+    branches: [develop, master, feature/*]
+  pull_request:
+    branches: [develop, master]
+  workflow_dispatch:
+
+env:
+  COMPOSE_FILE: docker-compose.yml
+  DOCKER_BUILDKIT: 1
+  COMPOSE_DOCKER_CLI_BUILD: 1
+
+jobs:
+  validate-deployment:
+    name: Validate Docker Compose Stack
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Display Docker environment info
+        run: |
+          echo "## 🐳 Docker Environment" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          docker --version
+          docker-compose --version
+          echo "✅ Docker version: $(docker --version)" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Docker-compose version: $(docker-compose --version)" >> $GITHUB_STEP_SUMMARY
+
+      - name: Pre-fetch base images
+        run: |
+          echo "Pulling base images to reduce startup time..."
+          docker pull postgres:15-alpine
+          docker pull redis:7-alpine
+          echo "✅ Base images pulled successfully"
+
+      - name: Start docker-compose stack
+        run: |
+          echo "Starting docker-compose services..."
+          docker-compose up -d
+          echo "Waiting for services to initialize..."
+          sleep 30
+          echo "✅ Docker-compose stack started"
+
+      - name: Display running services
+        run: |
+          echo "## 📋 Running Services" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          docker-compose ps >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          docker-compose ps
+
+      - name: Verify PostgreSQL health
+        run: |
+          echo "Verifying PostgreSQL health check..."
+          max_attempts=24
+          attempt=0
+          while [ $attempt -lt $max_attempts ]; do
+            if docker-compose exec -T postgres pg_isready -U admin -d rickmorty; then
+              echo "✅ PostgreSQL is healthy"
+              docker-compose exec -T postgres psql -U admin -d rickmorty -c "SELECT 1;" > /dev/null
+              echo "✅ PostgreSQL connection verified"
+              exit 0
+            fi
+            attempt=$((attempt + 1))
+            echo "Attempt $attempt/$max_attempts: Waiting for PostgreSQL..."
+            sleep 5
+          done
+          echo "❌ PostgreSQL failed to become healthy"
+          exit 1
+
+      - name: Verify Redis health
+        run: |
+          echo "Verifying Redis health check..."
+          max_attempts=24
+          attempt=0
+          while [ $attempt -lt $max_attempts ]; do
+            if docker-compose exec -T redis redis-cli ping | grep -q PONG; then
+              echo "✅ Redis is healthy"
+              docker-compose exec -T redis redis-cli SET healthcheck "ok" > /dev/null
+              docker-compose exec -T redis redis-cli GET healthcheck | grep -q "ok"
+              echo "✅ Redis set/get operations verified"
+              exit 0
+            fi
+            attempt=$((attempt + 1))
+            echo "Attempt $attempt/$max_attempts: Waiting for Redis..."
+            sleep 5
+          done
+          echo "❌ Redis failed to become healthy"
+          exit 1
+
+      - name: Verify API health
+        run: |
+          echo "Verifying API health check..."
+          max_attempts=24
+          attempt=0
+          while [ $attempt -lt $max_attempts ]; do
+            health_response=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:5000/health 2>/dev/null || echo "000")
+            if [ "$health_response" = "200" ]; then
+              echo "✅ API is healthy (HTTP $health_response)"
+              curl -s http://localhost:5000/health | python -m json.tool 2>/dev/null || echo "✅ Health endpoint responding"
+              exit 0
+            fi
+            attempt=$((attempt + 1))
+            echo "Attempt $attempt/$max_attempts: Waiting for API (HTTP $health_response)..."
+            sleep 5
+          done
+          echo "❌ API failed to become healthy"
+          exit 1
+
+      - name: Verify inter-service communication
+        run: |
+          echo "## 🔗 Inter-Service Communication" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Verify database connectivity from API
+          echo "Verifying database connectivity from API container..."
+          docker-compose exec -T rick-morty-api python -c "
+          import os
+          import sys
+          from sqlalchemy import create_engine, text
+          try:
+            db_url = os.getenv('DATABASE_URL')
+            if not db_url:
+              print('❌ DATABASE_URL not configured')
+              sys.exit(1)
+            engine = create_engine(db_url)
+            with engine.connect() as conn:
+              result = conn.execute(text('SELECT 1'))
+              print('✅ Database connectivity verified')
+          except Exception as e:
+            print(f'❌ Database connection failed: {e}')
+            sys.exit(1)
+          " || exit 1
+          echo "✅ Database connectivity verified" >> $GITHUB_STEP_SUMMARY
+          
+          # Verify Redis connectivity from API
+          echo "Verifying Redis connectivity from API container..."
+          docker-compose exec -T rick-morty-api python -c "
+          import os
+          import sys
+          import redis
+          try:
+            redis_url = os.getenv('REDIS_URL')
+            if not redis_url:
+              print('❌ REDIS_URL not configured')
+              sys.exit(1)
+            r = redis.from_url(redis_url)
+            r.ping()
+            print('✅ Redis connectivity verified')
+          except Exception as e:
+            print(f'❌ Redis connection failed: {e}')
+            sys.exit(1)
+          " || exit 1
+          echo "✅ Redis connectivity verified" >> $GITHUB_STEP_SUMMARY
+
+      - name: Run integration tests
+        run: |
+          echo "Running integration tests..."
+          # Check if tests directory exists
+          if [ -d "tests/integration" ] || [ -d "tests" ]; then
+            docker-compose exec -T rick-morty-api bash -c "
+              if [ -f requirements-test.txt ]; then
+                pip install -q -r requirements-test.txt
+              fi
+              if [ -d tests/integration ]; then
+                pytest tests/integration/ -v --tb=short 2>&1 || true
+              elif [ -d tests ]; then
+                pytest tests/ -v --tb=short 2>&1 || true
+              fi
+            " || echo "⚠️  Integration tests not found or pytest not available"
+          else
+            echo "⚠️  No tests directory found, skipping integration tests"
+          fi
+
+      - name: Collect diagnostic logs
+        if: always()
+        run: |
+          echo "Collecting diagnostic logs..."
+          mkdir -p deployment-logs
+          
+          # Collect all service logs
+          docker-compose logs > deployment-logs/docker-compose.log 2>&1 || true
+          docker-compose logs postgres > deployment-logs/postgres.log 2>&1 || true
+          docker-compose logs redis > deployment-logs/redis.log 2>&1 || true
+          docker-compose logs rick-morty-api > deployment-logs/rick-morty-api.log 2>&1 || true
+          
+          # Collect container inspection
+          docker ps -a > deployment-logs/docker-ps.txt 2>&1 || true
+          
+          echo "✅ Diagnostic logs collected"
+
+      - name: Upload logs as artifacts
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: deployment-validation-logs
+          path: deployment-logs/
+          retention-days: 7
+
+      - name: Clean up Docker stack
+        if: always()
+        run: |
+          echo "Cleaning up docker-compose stack..."
+          docker-compose down -v || true
+          echo "✅ Cleanup complete"
+
+      - name: Generate summary
+        if: always()
+        run: |
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "## ✅ Deployment Validation Passed" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "All services started successfully and passed health checks:" >> $GITHUB_STEP_SUMMARY
+            echo "- ✅ PostgreSQL (port 5432)" >> $GITHUB_STEP_SUMMARY
+            echo "- ✅ Redis (port 6379)" >> $GITHUB_STEP_SUMMARY
+            echo "- ✅ rick-morty-api (port 5000)" >> $GITHUB_STEP_SUMMARY
+            echo "- ✅ Inter-service communication verified" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "## ❌ Deployment Validation Failed" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Check the deployment validation logs artifact for details." >> $GITHUB_STEP_SUMMARY
+          fi

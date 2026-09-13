@@ -1,0 +1,164 @@
+name: Docker Hub Build and Push
+
+# Triggered when a semantic version tag is created (v1.0.0, v2.1.0-beta, etc.)
+# Also allows manual trigger via workflow_dispatch
+
+on:
+  create:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Optional: Override tag name for manual run'
+        required: false
+        type: string
+
+env:
+  REGISTRY: docker.io
+  IMAGE_NAME: rick-morty-api
+  DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+
+jobs:
+  verify-tag:
+    name: Verify Tag Format
+    runs-on: ubuntu-latest
+    outputs:
+      tag-name: ${{ steps.extract-tag.outputs.tag-name }}
+      is-valid: ${{ steps.validate-semver.outputs.is-valid }}
+      version: ${{ steps.extract-version.outputs.version }}
+    steps:
+      - name: Extract tag name
+        id: extract-tag
+        run: |
+          # Handle both tag creation event and manual dispatch
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ] && [ -n "${{ github.event.inputs.tag_name }}" ]; then
+            TAG_NAME="${{ github.event.inputs.tag_name }}"
+          else
+            TAG_NAME="${{ github.ref }}"
+            TAG_NAME="${TAG_NAME#refs/tags/}"
+          fi
+          echo "tag-name=$TAG_NAME" >> $GITHUB_OUTPUT
+          echo "✅ Tag: $TAG_NAME"
+      
+      - name: Validate semantic version format
+        id: validate-semver
+        run: |
+          TAG="${{ steps.extract-tag.outputs.tag-name }}"
+          # Regex: v{major}.{minor}.{patch}[-{prerelease}]
+          if [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$ ]]; then
+            echo "is-valid=true" >> $GITHUB_OUTPUT
+            # Extract version without 'v' prefix for Docker tags
+            VERSION="${TAG#v}"
+            echo "✅ Valid semantic version: $TAG"
+          else
+            echo "is-valid=false" >> $GITHUB_OUTPUT
+            echo "❌ Invalid format: $TAG (expected v1.0.0 or v1.0.0-beta)"
+            exit 1
+          fi
+      
+      - name: Extract version numbers
+        id: extract-version
+        run: |
+          TAG="${{ steps.extract-tag.outputs.tag-name }}"
+          # Remove 'v' prefix to get version
+          VERSION="${TAG#v}"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          # Extract major version
+          MAJOR="${VERSION%%.*}"
+          echo "major=$MAJOR" >> $GITHUB_OUTPUT
+          # Extract major.minor
+          MINOR="${VERSION%.*}"
+          echo "minor=$MINOR" >> $GITHUB_OUTPUT
+          echo "ℹ Version: $VERSION | Major: $MAJOR | Major.Minor: $MINOR"
+
+  build-and-push:
+    name: Build and Push to Docker Hub
+    runs-on: ubuntu-latest
+    needs: [verify-tag]
+    if: needs.verify-tag.outputs.is-valid == 'true'
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image-uri: ${{ steps.build.outputs.image-uri }}
+      image-digest: ${{ steps.build.outputs.digest }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+        with:
+          driver-options: image=moby/buildkit:master
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          registry: docker.io
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Extract metadata for Docker image
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          images: docker.io/${{ secrets.DOCKERHUB_USERNAME }}/rick-morty-api
+          flavor: |
+            latest=auto
+          tags: |
+            type=semver,pattern={{version}},value=${{ needs.verify-tag.outputs.version }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ needs.verify-tag.outputs.version }}
+            type=raw,value=latest
+
+      - name: Build and push multi-platform Docker image
+        id: build
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          dockerfile: ./Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          platforms: linux/amd64,linux/arm64
+          cache-from: type=registry,ref=docker.io/${{ secrets.DOCKERHUB_USERNAME }}/rick-morty-api:buildcache
+          cache-to: type=registry,ref=docker.io/${{ secrets.DOCKERHUB_USERNAME }}/rick-morty-api:buildcache,mode=max
+          build-args: |
+            BUILDKIT_INLINE_CACHE=1
+
+      - name: Generate build summary
+        run: |
+          echo "## 🐳 Docker Hub Build Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Image:** docker.io/${{ secrets.DOCKERHUB_USERNAME }}/rick-morty-api" >> $GITHUB_STEP_SUMMARY
+          echo "**Tags:** " >> $GITHUB_STEP_SUMMARY
+          echo "${{ steps.meta.outputs.tags }}" | tr ',' '\n' | sed 's/^docker.io\/${{ secrets.DOCKERHUB_USERNAME }}\/rick-morty-api:/- /' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Digest:** \`${{ steps.build.outputs.digest }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Platforms:** linux/amd64, linux/arm64" >> $GITHUB_STEP_SUMMARY
+
+  notify-success:
+    name: Notify Build Success
+    runs-on: ubuntu-latest
+    needs: [verify-tag, build-and-push]
+    if: success()
+    steps:
+      - name: Report success
+        run: |
+          echo "✅ Docker image successfully built and pushed to Docker Hub"
+          echo "Tag: ${{ needs.verify-tag.outputs.tag-name }}"
+          echo "Image: docker.io/${{ secrets.DOCKERHUB_USERNAME }}/rick-morty-api:${{ needs.verify-tag.outputs.version }}"
+
+  notify-failure:
+    name: Notify Build Failure
+    runs-on: ubuntu-latest
+    needs: [verify-tag, build-and-push]
+    if: failure()
+    steps:
+      - name: Report failure
+        run: |
+          echo "❌ Docker image build failed"
+          echo "Tag: ${{ needs.verify-tag.outputs.tag-name }}"
+          exit 1
