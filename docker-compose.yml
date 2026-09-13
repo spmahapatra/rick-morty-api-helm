@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  rick-morty-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: rick-morty-api
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_ENV=production
+      - RICK_AND_MORTY_API_BASE_URL=https://rickandmortyapi.com/api
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+    networks:
+      - rick-morty-network
+
+networks:
+  rick-morty-network:
+    driver: bridge
