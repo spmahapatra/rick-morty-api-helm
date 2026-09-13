@@ -180,14 +180,14 @@ jobs:
       
       - name: Validate docker-compose syntax
         run: |
-          docker-compose config -q
+          docker compose config -q
           echo "✅ docker-compose.yml is valid"
         timeout-minutes: 1
       
       - name: Start services stack
         run: |
           echo "🚀 Starting services..."
-          docker-compose up -d
+          docker compose up -d
           echo "⏳ Waiting for services to initialize..."
           sleep 5
         timeout-minutes: 2
@@ -195,7 +195,7 @@ jobs:
       - name: Check PostgreSQL connectivity
         run: |
           echo "🔍 Checking PostgreSQL..."
-          docker-compose exec -T postgres pg_isready -U admin -d rickmorty
+          docker compose exec -T postgres pg_isready -U admin -d rickmorty
           echo "✅ PostgreSQL is ready"
         timeout-minutes: 1
         continue-on-error: true
@@ -203,7 +203,7 @@ jobs:
       - name: Check Redis connectivity
         run: |
           echo "🔍 Checking Redis..."
-          docker-compose exec -T redis redis-cli ping
+          docker compose exec -T redis redis-cli ping
           echo "✅ Redis is ready"
         timeout-minutes: 1
         continue-on-error: true
@@ -222,7 +222,7 @@ jobs:
             sleep 1
           done
           echo "❌ Application failed to become ready within 30 seconds"
-          docker-compose logs rick-morty-api
+          docker compose logs rick-morty-api
           exit 1
         timeout-minutes: 1
       
@@ -243,22 +243,22 @@ jobs:
         if: failure()
         run: |
           echo "📋 Application logs:"
-          docker-compose logs rick-morty-api || true
+          docker compose logs rick-morty-api || true
           echo ""
           echo "📋 PostgreSQL logs:"
-          docker-compose logs postgres || true
+          docker compose logs postgres || true
           echo ""
           echo "📋 Redis logs:"
-          docker-compose logs redis || true
+          docker compose logs redis || true
           echo ""
           echo "📋 Service status:"
-          docker-compose ps
+          docker compose ps
       
       - name: Cleanup
         if: always()
         run: |
           echo "🧹 Cleaning up..."
-          docker-compose down --volumes
+          docker compose down --volumes
           echo "✅ Cleanup complete"
 
   release-validation-summary:
@@ -342,7 +342,7 @@ jobs:
               echo "🚀 Deployment Failed:"
               echo "   • Check docker-compose.yml configuration"
               echo "   • Verify all services start correctly"
-              echo "   • Run locally: docker-compose up"
+              echo "   • Run locally: docker compose up"
               echo "   • Check service health endpoints"
               echo ""
             fi
