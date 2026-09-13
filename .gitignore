@@ -43,6 +43,11 @@ wheels/
 *.log
 logs/
 
+# Documentation
+# Development notes and temporary documentation are excluded from version control
+# See docs/dev-notes/README.md for information about these files
+docs/dev-notes/
+
 # Cache
 .pytest_cache/
 .coverage
