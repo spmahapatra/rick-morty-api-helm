@@ -36,24 +36,34 @@ class Config:
     
     # Timeout
     REQUEST_TIMEOUT = 10
+    
+    # Cache configuration
+    CACHE_ENABLED = os.getenv("CACHE_ENABLED", "true").lower() == "true"
+    CACHE_TTL_SECONDS = int(os.getenv("CACHE_TTL_SECONDS", 300))
+    
+    # Redis configuration
+    REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/0")
 
 
 class DevelopmentConfig(Config):
     """Development configuration"""
     DEBUG = True
     FLASK_ENV = "development"
+    CACHE_ENABLED = False  # Use in-memory cache for development
 
 
 class TestingConfig(Config):
     """Testing configuration"""
     TESTING = True
     FLASK_ENV = "testing"
+    CACHE_ENABLED = False
 
 
 class ProductionConfig(Config):
     """Production configuration"""
     DEBUG = False
     FLASK_ENV = "production"
+    CACHE_ENABLED = True  # Use Redis in production
 
 
 # Select configuration based on environment
@@ -64,3 +74,38 @@ elif config_name == "production":
     config = ProductionConfig()
 else:
     config = DevelopmentConfig()
+
+
+# Cache backend initialization
+_cache_backend = None
+
+
+def get_cache_backend():
+    """Get or initialize cache backend"""
+    global _cache_backend
+    
+    if _cache_backend is not None:
+        return _cache_backend
+    
+    if not config.CACHE_ENABLED:
+        from src.cache.backend import InMemoryBackend
+        _cache_backend = InMemoryBackend()
+        return _cache_backend
+    
+    try:
+        from src.cache.backend import RedisBackend
+        _cache_backend = RedisBackend(
+            url=config.REDIS_URL,
+            pool_size=10,
+            socket_timeout=5
+        )
+        return _cache_backend
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.warning(f"Failed to initialize Redis backend: {e}, falling back to in-memory")
+        
+        from src.cache.backend import InMemoryBackend
+        _cache_backend = InMemoryBackend()
+        return _cache_backend
+

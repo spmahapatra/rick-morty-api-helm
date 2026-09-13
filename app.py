@@ -3,7 +3,7 @@ Rick and Morty Character API - RESTful Application
 Queries the Rick and Morty API to retrieve filtered character data
 """
 
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, g
 from flask_cors import CORS
 from functools import wraps
 import requests
@@ -18,9 +18,18 @@ from src.observability.logging import setup_logging, StructuredLogger, set_corre
 setup_logging(level="INFO", format_type="json")
 logger = StructuredLogger(__name__)
 
+# Import cache detection
+from src.cache.detection import CacheMiddleware, get_metrics_collector
+from config import get_cache_backend
+
 # Initialize Flask app
 app = Flask(__name__)
 CORS(app)
+
+# Initialize cache middleware
+cache_backend = get_cache_backend()
+cache_middleware = CacheMiddleware(app, cache_backend)
+metrics_collector = get_metrics_collector()
 
 # Constants
 RICK_AND_MORTY_API_BASE_URL = "https://rickandmortyapi.com/api"
@@ -221,6 +230,86 @@ def health_check():
     return jsonify({"status": "healthy"}), 200
 
 
+@app.route("/api/cache/stats", methods=["GET"])
+def get_cache_stats():
+    """Get cache statistics from backend"""
+    try:
+        if not cache_backend:
+            return jsonify({"error": "Cache not configured"}), 503
+        
+        stats = cache_backend.get_stats()
+        
+        logger.info(
+            "Cache stats retrieved",
+            cache_stats=stats,
+            correlation_id=get_correlation_id()
+        )
+        
+        return jsonify({
+            "status": "ok",
+            "cache_backend": stats,
+            "metrics": metrics_collector.get_stats(),
+            "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+        }), 200
+        
+    except Exception as e:
+        logger.error(
+            "Failed to get cache stats",
+            error=str(e),
+            correlation_id=get_correlation_id()
+        )
+        return jsonify({"error": "Failed to get cache stats"}), 500
+
+
+@app.route("/api/cache/flush", methods=["POST"])
+def flush_cache():
+    """Flush cache (admin endpoint)"""
+    try:
+        if not cache_backend:
+            return jsonify({"error": "Cache not configured"}), 503
+        
+        if cache_backend.flush():
+            metrics_collector.reset()
+            logger.info(
+                "Cache flushed",
+                correlation_id=get_correlation_id()
+            )
+            return jsonify({"status": "ok", "message": "Cache flushed"}), 200
+        else:
+            return jsonify({"error": "Failed to flush cache"}), 500
+            
+    except Exception as e:
+        logger.error(
+            "Cache flush failed",
+            error=str(e),
+            correlation_id=get_correlation_id()
+        )
+        return jsonify({"error": "Cache flush failed"}), 500
+
+
+@app.route("/api/cache/analytics", methods=["GET"])
+def get_cache_analytics():
+    """Get detailed cache analytics for monitoring"""
+    try:
+        backend_stats = cache_backend.get_stats() if cache_backend else {}
+        metrics = metrics_collector.get_stats()
+        
+        return jsonify({
+            "status": "ok",
+            "backend_stats": backend_stats,
+            "request_metrics": metrics,
+            "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+        }), 200
+        
+    except Exception as e:
+        logger.error(
+            "Failed to get cache analytics",
+            error=str(e),
+            correlation_id=get_correlation_id()
+        )
+        return jsonify({"error": "Failed to get analytics"}), 500
+
+
 @app.route("/characters", methods=["GET"])
 @handle_api_errors
 def get_characters():
@@ -386,18 +475,29 @@ def log_request():
 
 @app.after_request
 def log_response(response):
-    """Log response with structured logging"""
+    """Log response with structured logging and cache status"""
     if hasattr(request, 'start_time'):
         elapsed_time = time.time() - request.start_time
     else:
         elapsed_time = 0
     
+    # Get cache status from middleware
+    cache_status = g.get("cache_status", "UNKNOWN")
+    cache_key = g.get("cache_key", "")
+    
+    # Record metrics if cache status available
+    if cache_status in ["HIT", "MISS", "ERROR", "BYPASS"]:
+        metrics_collector.record_request(cache_status, elapsed_time * 1000)
+    
+    # Log response with cache context
     logger.info(
         "Response sent",
         method=request.method,
         path=request.path,
         status_code=response.status_code,
         elapsed_time_ms=round(elapsed_time * 1000, 2),
+        cache_status=cache_status,
+        cache_key=cache_key,
         correlation_id=get_correlation_id()
     )
     
