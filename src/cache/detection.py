@@ -87,10 +87,8 @@ class CacheDetector:
         if req.args.get("cache") == "bypass":
             return False
         
-        # Skip if no query parameters (prevent caching all requests)
-        if not req.args:
-            return False
-        
+        # Cache all safe requests to cacheable endpoints
+        # (Both requests with and without query parameters)
         return True
     
     def detect_cache_status(self, req) -> tuple[str, Optional[Dict]]:
@@ -212,7 +210,7 @@ class CacheMiddleware:
     
     def after_request(self, response):
         """
-        After response: Add cache headers and logging
+        After response: Add cache headers, store in cache, and logging
         
         Adds headers:
         - X-Cache: hit, miss, bypass, error
@@ -226,6 +224,29 @@ class CacheMiddleware:
         # Get cache info from request context
         cache_status = g.get("cache_status", "UNKNOWN")
         cache_key = g.get("cache_key", "")
+        
+        # Store response in cache if MISS and status is 200 and JSON content
+        if (cache_status == "MISS" and 
+            response.status_code == 200 and 
+            self.cache_backend and
+            "application/json" in response.headers.get("Content-Type", "")):
+            try:
+                # Get JSON data from response
+                response_json = response.get_json()
+                if response_json is not None:
+                    # Store response data in cache with 5-minute TTL
+                    response_data = {
+                        "data": response_json,
+                        "status_code": response.status_code,
+                        "cached_at": time.time()
+                    }
+                    success = self.cache_backend.set(cache_key, response_data, ttl_seconds=300)
+                    if success:
+                        logger.debug(f"Cached response for {cache_key} (TTL: 300s)")
+                    else:
+                        logger.warning(f"Failed to cache response for {cache_key}")
+            except Exception as e:
+                logger.warning(f"Exception while caching response for {cache_key}: {type(e).__name__}: {e}")
         
         # Add cache status header (main indicator)
         response.headers["X-Cache"] = cache_status.lower()

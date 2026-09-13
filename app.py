@@ -311,6 +311,7 @@ def get_cache_analytics():
 
 
 @app.route("/characters", methods=["GET"])
+@app.route("/characters/", methods=["GET"])
 @handle_api_errors
 def get_characters():
     """

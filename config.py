@@ -90,6 +90,8 @@ def get_cache_backend():
     if not config.CACHE_ENABLED:
         from src.cache.backend import InMemoryBackend
         _cache_backend = InMemoryBackend()
+        logger = __import__('logging').getLogger(__name__)
+        logger.warning("CACHE BACKEND: Using InMemoryBackend (CACHE_ENABLED=false)")
         return _cache_backend
     
     try:
@@ -99,11 +101,14 @@ def get_cache_backend():
             pool_size=10,
             socket_timeout=5
         )
+        logger = __import__('logging').getLogger(__name__)
+        logger.warning(f"CACHE BACKEND: Using RedisBackend at {config.REDIS_URL}")
         return _cache_backend
     except Exception as e:
         import logging
         logger = logging.getLogger(__name__)
-        logger.warning(f"Failed to initialize Redis backend: {e}, falling back to in-memory")
+        logger.error(f"CACHE BACKEND: Failed to initialize Redis backend: {e}")
+        logger.warning("CACHE BACKEND: Falling back to InMemoryBackend (may not work with multiple workers)")
         
         from src.cache.backend import InMemoryBackend
         _cache_backend = InMemoryBackend()
