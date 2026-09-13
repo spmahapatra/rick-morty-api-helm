@@ -60,6 +60,57 @@ We appreciate contributions to the Rick and Morty API project! This guide explai
 6. **Create Pull Request** with clear description
 
 ### Documentation
+
+All documentation contributions must follow our organization standards.
+
+#### Documentation File Organization
+
+**ALL markdown documentation must be placed in `/docs` subdirectories** (except `README.md` in root).
+
+```
+docs/
+├── api/              # API reference documentation
+├── architecture/     # Architecture and design docs
+├── contributing/     # Contribution guidelines
+├── deployment/       # Deployment procedures
+├── examples/         # Example configurations
+├── guides/           # How-to guides and tutorials
+├── maintenance/      # Maintenance and analysis
+└── operations/       # Operational procedures
+```
+
+**Examples of correct locations:**
+
+| File Purpose | Correct Location | Incorrect Location |
+|---|---|---|
+| CI/CD setup guide | `docs/guides/CI_CD_SETUP.md` | ❌ `CI_CD_SETUP.md` |
+| Security analysis | `docs/maintenance/SECURITY_ANALYSIS.md` | ❌ `SECURITY_ANALYSIS.md` |
+| Deployment checklist | `docs/deployment/DEPLOYMENT_CHECKLIST.md` | ❌ `DEPLOYMENT_CHECKLIST.md` |
+| API reference | `docs/api/API_REFERENCE.md` | ❌ `API_REFERENCE.md` |
+
+**Pre-commit hook enforcement:**
+
+Before committing, a pre-commit hook will reject any markdown files in the root directory:
+
+```bash
+$ git commit -m "Add CI/CD guide"
+❌ Error: Markdown files must be in /docs subdirectories
+Files in root directory:
+  - CI_CD_GUIDE.md
+
+Move files to appropriate /docs subdirectories:
+  - CI/CD guides → docs/guides/
+```
+
+**Fix:** Move files to appropriate `/docs` subdirectories before committing:
+
+```bash
+git mv CI_CD_GUIDE.md docs/guides/
+git commit -m "docs: add CI/CD setup guide"
+```
+
+#### Documentation Contribution Types
+
 - Fix typos and clarify explanations
 - Add examples and tutorials
 - Improve guides and references

@@ -17,6 +17,10 @@ Welcome to the Rick and Morty API project documentation! Use this guide to find 
 - **Caching Guide**: [`docs/guides/CACHE_HIT_MISS_DETECTION_GUIDE.md`](guides/CACHE_HIT_MISS_DETECTION_GUIDE.md) - How caching works
 - **Database Setup**: [`docs/guides/DATABASE_INITIALIZATION_SETUP.md`](guides/DATABASE_INITIALIZATION_SETUP.md) - Database schema and initialization
 - **Logging Guide**: [`docs/guides/STRUCTURED_LOGGING_GUIDE.md`](guides/STRUCTURED_LOGGING_GUIDE.md) - Structured logging and correlation IDs
+- **CI/CD Implementation**: [`docs/guides/CI_CD_IMPLEMENTATION_GUIDE.md`](guides/CI_CD_IMPLEMENTATION_GUIDE.md) - Complete CI/CD setup and workflow
+- **CI/CD Quick Start**: [`docs/guides/CI_CD_QUICK_START.md`](guides/CI_CD_QUICK_START.md) - Quick reference for CI/CD pipeline
+- **GitHub Actions Guide**: [`docs/guides/GITHUB_ACTIONS_GUIDE.md`](guides/GITHUB_ACTIONS_GUIDE.md) - GitHub Actions workflows and automation
+- **Technical Implementation**: [`docs/guides/TECHNICAL_IMPLEMENTATION_GUIDE.md`](guides/TECHNICAL_IMPLEMENTATION_GUIDE.md) - Technical implementation details
 
 ### 🚀 **Deployment & Operations**
 - **Deployment Checklist**: [`docs/deployment/DEPLOYMENT_CHECKLIST.md`](deployment/DEPLOYMENT_CHECKLIST.md) - Pre-deployment validation
@@ -36,9 +40,12 @@ Welcome to the Rick and Morty API project documentation! Use this guide to find 
 - **Development Setup**: [`docs/contributing/DEVELOPMENT_SETUP.md`](contributing/DEVELOPMENT_SETUP.md) - Local development environment
 - **Git Workflow**: [`docs/contributing/GIT_WORKFLOW.md`](contributing/GIT_WORKFLOW.md) - Git and GitHub procedures
 
-### 📋 **Maintenance**
-- **Changelog**: [`docs/maintenance/CHANGELOG.md`](maintenance/CHANGELOG.md) - Release notes and version history
+### 📋 **Maintenance & Analysis**
 - **Documentation Reorganization**: [`docs/maintenance/DOCUMENTATION_REORGANIZATION_SUMMARY.md`](maintenance/DOCUMENTATION_REORGANIZATION_SUMMARY.md) - Project documentation structure
+- **Docker Security Implementation**: [`docs/maintenance/DOCKER_SECURITY_IMPLEMENTATION_GUIDE.md`](maintenance/DOCKER_SECURITY_IMPLEMENTATION_GUIDE.md) - Docker security best practices
+- **Security Analysis**: [`docs/maintenance/SECURITY_ANALYSIS_INDEX.md`](maintenance/SECURITY_ANALYSIS_INDEX.md) - Security scanning and analysis
+- **GitHub Actions Cost Analysis**: [`docs/maintenance/GITHUB_ACTIONS_COST_ANALYSIS.md`](maintenance/GITHUB_ACTIONS_COST_ANALYSIS.md) - Cost optimization for GitHub Actions
+- **Pipeline Fixes**: [`docs/maintenance/PIPELINE_FIXES.md`](maintenance/PIPELINE_FIXES.md) - CI/CD pipeline corrections and fixes
 
 ---
 
@@ -50,6 +57,10 @@ Welcome to the Rick and Morty API project documentation! Use this guide to find 
 | [`CACHE_HIT_MISS_DETECTION_GUIDE.md`](guides/CACHE_HIT_MISS_DETECTION_GUIDE.md) | Understanding cache performance and hit/miss detection |
 | [`STRUCTURED_LOGGING_GUIDE.md`](guides/STRUCTURED_LOGGING_GUIDE.md) | Structured logging with correlation IDs for tracing |
 | [`DATABASE_INITIALIZATION_SETUP.md`](guides/DATABASE_INITIALIZATION_SETUP.md) | Database schema, tables, and initialization process |
+| [`CI_CD_IMPLEMENTATION_GUIDE.md`](guides/CI_CD_IMPLEMENTATION_GUIDE.md) | Complete CI/CD pipeline setup and implementation |
+| [`CI_CD_QUICK_START.md`](guides/CI_CD_QUICK_START.md) | Quick reference guide for CI/CD workflows |
+| [`GITHUB_ACTIONS_GUIDE.md`](guides/GITHUB_ACTIONS_GUIDE.md) | GitHub Actions automation and workflow management |
+| [`TECHNICAL_IMPLEMENTATION_GUIDE.md`](guides/TECHNICAL_IMPLEMENTATION_GUIDE.md) | Technical implementation details and best practices |
 
 ### Deployment & Operations
 | Document | Purpose |
@@ -110,6 +121,12 @@ Welcome to the Rick and Morty API project documentation! Use this guide to find 
 | [`VERSION_HISTORY.md`](maintenance/VERSION_HISTORY.md) | Detailed version information |
 | [`MAINTENANCE_SCHEDULE.md`](maintenance/MAINTENANCE_SCHEDULE.md) | Regular maintenance tasks |
 | [`DOCUMENTATION_REORGANIZATION_SUMMARY.md`](maintenance/DOCUMENTATION_REORGANIZATION_SUMMARY.md) | Documentation structure and organization |
+| [`DOCKER_SECURITY_IMPLEMENTATION_GUIDE.md`](maintenance/DOCKER_SECURITY_IMPLEMENTATION_GUIDE.md) | Docker security best practices and implementation |
+| [`DOCKER_SECURITY_SCANNING_ANALYSIS.md`](maintenance/DOCKER_SECURITY_SCANNING_ANALYSIS.md) | Security scanning analysis and recommendations |
+| [`SECURITY_ANALYSIS_INDEX.md`](maintenance/SECURITY_ANALYSIS_INDEX.md) | Index of security analysis and assessments |
+| [`SECURITY_SCANNING_DECISION_MATRIX.md`](maintenance/SECURITY_SCANNING_DECISION_MATRIX.md) | Decision matrix for security scanning tools |
+| [`GITHUB_ACTIONS_COST_ANALYSIS.md`](maintenance/GITHUB_ACTIONS_COST_ANALYSIS.md) | GitHub Actions cost optimization and analysis |
+| [`PIPELINE_FIXES.md`](maintenance/PIPELINE_FIXES.md) | CI/CD pipeline corrections and improvements |
 
 ---
 

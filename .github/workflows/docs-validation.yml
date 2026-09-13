@@ -1,0 +1,76 @@
+name: Documentation Validation
+
+# Validate that all markdown files follow the /docs directory structure convention
+on:
+  pull_request:
+    paths:
+      - '**.md'
+      - 'docs/**'
+  push:
+    branches: [master, develop]
+    paths:
+      - '**.md'
+      - 'docs/**'
+  workflow_dispatch:
+
+jobs:
+  check-doc-location:
+    name: Check Documentation File Locations
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check for root-level markdown files
+        run: |
+          echo "## 📋 Documentation Organization Check" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Find .md files in root (except README.md)
+          ROOT_MDS=$(find . -maxdepth 1 -name "*.md" -not -name "README.md" -type f)
+          ROOT_COUNT=$(echo "$ROOT_MDS" | grep -c . || true)
+          
+          if [ $ROOT_COUNT -gt 0 ]; then
+            echo "❌ Error: Found $ROOT_COUNT markdown file(s) in root directory" | tee -a $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### Files in Root Directory:" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            echo "$ROOT_MDS" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### Documentation Organization Guidelines:" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "All markdown documentation must be in \`/docs\` subdirectories:" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "- **CI/CD Guides**: \`docs/guides/\`" >> $GITHUB_STEP_SUMMARY
+            echo "- **Security Analysis**: \`docs/maintenance/\`" >> $GITHUB_STEP_SUMMARY
+            echo "- **API Documentation**: \`docs/api/\`" >> $GITHUB_STEP_SUMMARY
+            echo "- **Architecture**: \`docs/architecture/\`" >> $GITHUB_STEP_SUMMARY
+            echo "- **Deployment**: \`docs/deployment/\`" >> $GITHUB_STEP_SUMMARY
+            echo "- **Examples**: \`docs/examples/\`" >> $GITHUB_STEP_SUMMARY
+            echo "- **Operations**: \`docs/operations/\`" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### Fix:" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+            echo "# Move files to appropriate /docs subdirectories" >> $GITHUB_STEP_SUMMARY
+            echo "$ROOT_MDS" | while read file; do
+              echo "git mv \"$file\" docs/guides/" >> $GITHUB_STEP_SUMMARY
+            done
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          else
+            echo "✅ All markdown files are correctly organized in /docs" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Verify docs structure
+        if: success()
+        run: |
+          echo "## 📁 Documentation Structure" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Verified directories:" >> $GITHUB_STEP_SUMMARY
+          for dir in api architecture contributing deployment examples guides maintenance operations; do
+            if [ -d "docs/$dir" ]; then
+              count=$(find docs/$dir -maxdepth 1 -name "*.md" -type f | wc -l)
+              echo "- ✅ \`docs/$dir/\` ($count files)" >> $GITHUB_STEP_SUMMARY
+            fi
+          done
