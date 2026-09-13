@@ -31,9 +31,9 @@ jobs:
           echo "## 🐳 Docker Environment" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           docker --version
-          docker-compose --version
+          docker compose version
           echo "✅ Docker version: $(docker --version)" >> $GITHUB_STEP_SUMMARY
-          echo "✅ Docker-compose version: $(docker-compose --version)" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Docker Compose version: $(docker compose version)" >> $GITHUB_STEP_SUMMARY
 
       - name: Pre-fetch base images
         run: |
@@ -44,20 +44,20 @@ jobs:
 
       - name: Start docker-compose stack
         run: |
-          echo "Starting docker-compose services..."
-          docker-compose up -d
+          echo "Starting docker compose services..."
+          docker compose up -d
           echo "Waiting for services to initialize..."
           sleep 30
-          echo "✅ Docker-compose stack started"
+          echo "✅ Docker compose stack started"
 
       - name: Display running services
         run: |
           echo "## 📋 Running Services" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          docker-compose ps >> $GITHUB_STEP_SUMMARY
+          docker compose ps >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          docker-compose ps
+          docker compose ps
 
       - name: Verify PostgreSQL health
         run: |
@@ -65,9 +65,9 @@ jobs:
           max_attempts=24
           attempt=0
           while [ $attempt -lt $max_attempts ]; do
-            if docker-compose exec -T postgres pg_isready -U admin -d rickmorty; then
+            if docker compose exec -T postgres pg_isready -U admin -d rickmorty; then
               echo "✅ PostgreSQL is healthy"
-              docker-compose exec -T postgres psql -U admin -d rickmorty -c "SELECT 1;" > /dev/null
+              docker compose exec -T postgres psql -U admin -d rickmorty -c "SELECT 1;" > /dev/null
               echo "✅ PostgreSQL connection verified"
               exit 0
             fi
@@ -84,10 +84,10 @@ jobs:
           max_attempts=24
           attempt=0
           while [ $attempt -lt $max_attempts ]; do
-            if docker-compose exec -T redis redis-cli ping | grep -q PONG; then
+            if docker compose exec -T redis redis-cli ping | grep -q PONG; then
               echo "✅ Redis is healthy"
-              docker-compose exec -T redis redis-cli SET healthcheck "ok" > /dev/null
-              docker-compose exec -T redis redis-cli GET healthcheck | grep -q "ok"
+              docker compose exec -T redis redis-cli SET healthcheck "ok" > /dev/null
+              docker compose exec -T redis redis-cli GET healthcheck | grep -q "ok"
               echo "✅ Redis set/get operations verified"
               exit 0
             fi
@@ -124,7 +124,7 @@ jobs:
           
           # Verify database connectivity from API
           echo "Verifying database connectivity from API container..."
-          docker-compose exec -T rick-morty-api python -c "
+          docker compose exec -T rick-morty-api python -c "
           import os
           import sys
           from sqlalchemy import create_engine, text
@@ -145,7 +145,7 @@ jobs:
           
           # Verify Redis connectivity from API
           echo "Verifying Redis connectivity from API container..."
-          docker-compose exec -T rick-morty-api python -c "
+          docker compose exec -T rick-morty-api python -c "
           import os
           import sys
           import redis
@@ -168,7 +168,7 @@ jobs:
           echo "Running integration tests..."
           # Check if tests directory exists
           if [ -d "tests/integration" ] || [ -d "tests" ]; then
-            docker-compose exec -T rick-morty-api bash -c "
+            docker compose exec -T rick-morty-api bash -c "
               if [ -f requirements-test.txt ]; then
                 pip install -q -r requirements-test.txt
               fi
@@ -189,10 +189,10 @@ jobs:
           mkdir -p deployment-logs
           
           # Collect all service logs
-          docker-compose logs > deployment-logs/docker-compose.log 2>&1 || true
-          docker-compose logs postgres > deployment-logs/postgres.log 2>&1 || true
-          docker-compose logs redis > deployment-logs/redis.log 2>&1 || true
-          docker-compose logs rick-morty-api > deployment-logs/rick-morty-api.log 2>&1 || true
+          docker compose logs > deployment-logs/docker-compose.log 2>&1 || true
+          docker compose logs postgres > deployment-logs/postgres.log 2>&1 || true
+          docker compose logs redis > deployment-logs/redis.log 2>&1 || true
+          docker compose logs rick-morty-api > deployment-logs/rick-morty-api.log 2>&1 || true
           
           # Collect container inspection
           docker ps -a > deployment-logs/docker-ps.txt 2>&1 || true
@@ -210,8 +210,8 @@ jobs:
       - name: Clean up Docker stack
         if: always()
         run: |
-          echo "Cleaning up docker-compose stack..."
-          docker-compose down -v || true
+          echo "Cleaning up docker compose stack..."
+          docker compose down -v || true
           echo "✅ Cleanup complete"
 
       - name: Generate summary
