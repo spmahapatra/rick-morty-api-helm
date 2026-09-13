@@ -218,7 +218,7 @@ If running in Docker, logs go to **container STDOUT**, which Docker captures.
 
 ```bash
 # If running in Docker Compose
-docker-compose logs -f app
+docker compose logs -f app
 
 # If running in Kubernetes
 kubectl logs -f deployment/rick-morty-api

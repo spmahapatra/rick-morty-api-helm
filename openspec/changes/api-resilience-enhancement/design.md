@@ -413,7 +413,7 @@ def deep_health_check():
 
 ### Local Development
 ```
-docker-compose up -d
+docker compose up -d
 
 Services:
 - app (Flask on :5000)

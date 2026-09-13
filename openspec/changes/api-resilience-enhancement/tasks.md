@@ -839,20 +839,20 @@ pytest tests/observability/ -v --cov=app.observability --cov-report=term-missing
 - ✅ Environment: All services auto-configured via docker-compose.yml
 - ✅ Networks: All services on same network (app → redis, postgres)
 - ✅ Health checks: Compose waits for dependent services
-- ✅ Startup: `docker-compose up` brings up fully functional stack
-- ✅ Cleanup: `docker-compose down` cleanly shuts down
+- ✅ Startup: `docker compose up` brings up fully functional stack
+- ✅ Cleanup: `docker compose down` cleanly shuts down
 
 **Verification:**
 ```bash
-docker-compose up -d
+docker compose up -d
 sleep 10
 curl http://localhost:5000/health
 # Should return 200 OK
 
-docker-compose ps
+docker compose ps
 # All services should show "healthy" or "running"
 
-docker-compose down
+docker compose down
 ```
 
 **Effort:** 3 hours

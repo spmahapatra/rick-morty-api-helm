@@ -87,7 +87,7 @@ rick-morty-api:
 
 ```bash
 cd /home/localadmin/localwork/setupAppCreDepHelmPkg
-docker-compose down
+docker compose down
 ```
 
 **Output**: All containers stopped and removed
@@ -106,7 +106,7 @@ git log --oneline -1
 ### Step 3: Rebuild Docker Image
 
 ```bash
-docker-compose build --no-cache
+docker compose build --no-cache
 ```
 
 **Output**: Docker rebuilds the image with new Dockerfile settings
@@ -114,7 +114,7 @@ docker-compose build --no-cache
 ### Step 4: Start Containers
 
 ```bash
-docker-compose up -d
+docker compose up -d
 ```
 
 **Output**: Containers start in detached mode
@@ -122,7 +122,7 @@ docker-compose up -d
 ### Step 5: Monitor Logs
 
 ```bash
-docker-compose logs -f rick-morty-api
+docker compose logs -f rick-morty-api
 ```
 
 **Expected Output** (no worker timeouts):
@@ -144,7 +144,7 @@ docker-compose logs -f rick-morty-api
 
 **Terminal 1**: Monitor logs
 ```bash
-docker-compose logs -f rick-morty-api
+docker compose logs -f rick-morty-api
 ```
 
 **Terminal 2**: Make requests
@@ -238,7 +238,7 @@ Check that:
 ### Check Container Health
 
 ```bash
-docker-compose ps
+docker compose ps
 ```
 
 **Expected Output**:
@@ -264,7 +264,7 @@ rick-morty-api    125M / 512M    (healthy usage)
 ### View Worker Status
 
 ```bash
-docker-compose logs rick-morty-api | grep -i "booting\|worker\|timeout"
+docker compose logs rick-morty-api | grep -i "booting\|worker\|timeout"
 ```
 
 **Expected Output**:
@@ -291,23 +291,23 @@ Once containers are running without timeouts, you'll see structured JSON logs:
 
 ```bash
 # 1. Stop containers
-docker-compose down
+docker compose down
 
 # 2. Rebuild image with new Dockerfile
-docker-compose build --no-cache
+docker compose build --no-cache
 
 # 3. Start containers
-docker-compose up -d
+docker compose up -d
 
 # 4. Monitor logs
-docker-compose logs -f rick-morty-api
+docker compose logs -f rick-morty-api
 
 # 5. Test endpoints
 curl http://localhost:5000/health
 curl http://localhost:5000/characters
 
 # 6. Check health
-docker-compose ps
+docker compose ps
 
 # 7. Monitor resources
 docker stats rick-morty-api
@@ -327,7 +327,7 @@ docker stats rick-morty-api
 
 2. Rebuild without cache:
    ```bash
-   docker-compose build --no-cache
+   docker compose build --no-cache
    ```
 
 3. Remove old images:
@@ -337,23 +337,23 @@ docker stats rick-morty-api
 
 4. Restart:
    ```bash
-   docker-compose down
-   docker-compose up -d
+   docker compose down
+   docker compose up -d
    ```
 
 ### Container Won't Start?
 
 ```bash
 # Check logs for errors
-docker-compose logs rick-morty-api
+docker compose logs rick-morty-api
 
 # Verify dependencies are healthy
-docker-compose ps
+docker compose ps
 
 # Rebuild from scratch
-docker-compose down
-docker-compose build --no-cache
-docker-compose up -d
+docker compose down
+docker compose build --no-cache
+docker compose up -d
 ```
 
 ### High Memory Usage?
