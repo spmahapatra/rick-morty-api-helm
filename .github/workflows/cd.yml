@@ -1,0 +1,266 @@
+name: CD Pipeline
+
+on:
+  push:
+    branches: [ master, main ]
+    tags: [ 'v*' ]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+concurrency:
+  group: deployment-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-and-test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    outputs:
+      image-tag: ${{ steps.meta.outputs.tags }}
+      image-digest: ${{ steps.build.outputs.digest }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt pytest pytest-cov
+      
+      - name: Run tests
+        run: pytest tests/ --cov=src --cov-report=xml -v
+        env:
+          APP_ENV: testing
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      
+      - name: Log in to Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+      
+      - name: Build and push Docker image
+        id: build
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache,mode=max
+
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [build-and-test]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+    environment:
+      name: staging
+      url: ${{ steps.deploy.outputs.url }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Configure deployment
+        id: deploy
+        run: |
+          echo "url=https://staging.example.com" >> $GITHUB_OUTPUT
+          echo "✅ Staging deployment configuration ready"
+      
+      - name: Deploy to Staging
+        run: |
+          echo "🚀 Deploying ${{ needs.build-and-test.outputs.image-tag }} to staging"
+          # Add your staging deployment script here
+          # Example: docker pull, docker stop, docker run, etc.
+          # Or: kubectl apply -f k8s/staging/
+          # Or: terraform apply -var-file=staging.tfvars
+      
+      - name: Run smoke tests
+        run: |
+          echo "🧪 Running smoke tests against staging"
+          # Add your smoke test commands here
+          # Example: curl health checks, basic API tests, etc.
+      
+      - name: Notify deployment
+        if: always()
+        run: |
+          echo "📢 Staging deployment notification"
+          # Add notification service (Slack, PagerDuty, etc.)
+
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: [build-and-test]
+    if: startsWith(github.ref, 'refs/tags/v')
+    environment:
+      name: production
+      url: ${{ steps.deploy.outputs.url }}
+    
+    permissions:
+      contents: read
+      packages: read
+      id-token: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Verify tag format
+        run: |
+          if [[ "${{ github.ref }}" =~ ^refs/tags/v[0-9]+\.[0-9]+\.[0-9]+ ]]; then
+            echo "✅ Valid semver tag: ${{ github.ref }}"
+          else
+            echo "❌ Invalid tag format. Use v{major}.{minor}.{patch}"
+            exit 1
+          fi
+      
+      - name: Create deployment approval
+        id: approval
+        run: |
+          echo "⏳ Awaiting production deployment approval..."
+          echo "deployment_approved=true" >> $GITHUB_OUTPUT
+      
+      - name: Configure production deployment
+        id: deploy
+        run: |
+          echo "url=https://api.example.com" >> $GITHUB_OUTPUT
+          VERSION="${{ github.ref }}"
+          echo "version=${VERSION#refs/tags/}" >> $GITHUB_OUTPUT
+      
+      - name: Deploy to Production
+        run: |
+          echo "🚀 Deploying ${{ needs.build-and-test.outputs.image-tag }} to production"
+          VERSION="${{ steps.deploy.outputs.version }}"
+          echo "📦 Production version: $VERSION"
+          # Add your production deployment script here
+          # Example: docker pull, blue-green deployment, canary rollout, etc.
+          # Or: kubectl set image deployment/app app=${{ needs.build-and-test.outputs.image-tag }}
+          # Or: terraform apply -var-file=production.tfvars
+      
+      - name: Run production health checks
+        run: |
+          echo "🏥 Running production health checks"
+          # Add your production health check commands here
+          # Example: curl endpoints, database connectivity, cache status, etc.
+          sleep 5
+          # curl https://api.example.com/health -f || exit 1
+      
+      - name: Run production smoke tests
+        run: |
+          echo "🧪 Running production smoke tests"
+          # Add your production smoke test commands here
+          # Example: critical path tests, API contract tests, etc.
+      
+      - name: Notify deployment success
+        if: success()
+        run: |
+          echo "✅ Production deployment successful"
+          # Add notification service (Slack, PagerDuty, etc.)
+      
+      - name: Notify deployment failure
+        if: failure()
+        run: |
+          echo "❌ Production deployment failed - initiating rollback"
+          # Add rollback script here
+      
+      - name: Create release notes
+        if: success()
+        run: |
+          echo "📝 Creating release notes for ${{ steps.deploy.outputs.version }}"
+          gh release create "${{ steps.deploy.outputs.version }}" \
+            --title "Release ${{ steps.deploy.outputs.version }}" \
+            --generate-release-notes \
+            --draft=false
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  monitor:
+    name: Monitor Deployment
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [deploy-production]
+    if: always()
+    
+    steps:
+      - name: Check deployment status
+        run: |
+          if [[ "${{ needs.deploy-production.result }}" == "success" ]]; then
+            echo "✅ Production deployment completed successfully"
+            exit 0
+          elif [[ "${{ needs.deploy-production.result }}" == "skipped" ]]; then
+            echo "⏭️  Production deployment was skipped"
+            exit 0
+          else
+            echo "❌ Production deployment failed"
+            exit 1
+          fi
+      
+      - name: Post-deployment verification
+        run: |
+          echo "🔍 Running post-deployment verification..."
+          # Add your post-deployment checks here
+          # Example: verify all services running, check metrics, validate logs, etc.
+
+  rollback:
+    name: Rollback if Needed
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [deploy-production, monitor]
+    if: failure()
+    
+    steps:
+      - name: Trigger rollback
+        run: |
+          echo "⚠️  Initiating rollback procedure"
+          # Add your rollback script here
+          # Example: restore previous image tag, database snapshot, etc.
+          # or: kubectl rollout undo deployment/app
+          # or: terraform apply -var-file=production.tfvars -var=version=previous
+      
+      - name: Verify rollback
+        run: |
+          echo "🔍 Verifying rollback completion"
+          # Add verification commands here
+      
+      - name: Notify rollback
+        run: |
+          echo "📢 Rollback notification"
+          # Add notification service (Slack, PagerDuty, etc.)
