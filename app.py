@@ -9,10 +9,14 @@ from functools import wraps
 import requests
 from typing import Dict, List, Any, Tuple
 import logging
+import uuid
+import time
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+# Configure structured JSON logging
+from src.observability.logging import setup_logging, StructuredLogger, set_correlation_id, get_correlation_id
+
+setup_logging(level="INFO", format_type="json")
+logger = StructuredLogger(__name__)
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -45,13 +49,31 @@ def handle_api_errors(f):
     """Decorator to handle API errors gracefully"""
     @wraps(f)
     def decorated_function(*args, **kwargs):
+        correlation_id = request.headers.get('X-Correlation-ID', str(uuid.uuid4()))
+        set_correlation_id(correlation_id)
+        
         try:
             return f(*args, **kwargs)
         except RickAndMortyAPIError as e:
-            logger.error(f"Rick and Morty API error: {str(e)}")
+            logger.error(
+                "Rick and Morty API error occurred",
+                error_type="RickAndMortyAPIError",
+                error_message=str(e),
+                status_code=e.status_code,
+                correlation_id=correlation_id,
+                endpoint=request.endpoint,
+                method=request.method
+            )
             return jsonify({"error": str(e)}), e.status_code
         except Exception as e:
-            logger.error(f"Unexpected error: {str(e)}")
+            logger.error(
+                "Unexpected error occurred",
+                error_type=type(e).__name__,
+                error_message=str(e),
+                correlation_id=correlation_id,
+                endpoint=request.endpoint,
+                method=request.method
+            )
             return jsonify({"error": "Internal server error"}), 500
     return decorated_function
 
@@ -104,7 +126,14 @@ class RickAndMortyClient:
             return response.json()
             
         except requests.exceptions.RequestException as e:
-            logger.error(f"Request error: {str(e)}")
+            logger.error(
+                "Failed to fetch data from Rick and Morty API",
+                error_type=type(e).__name__,
+                error_message=str(e),
+                url=url,
+                params=params,
+                timeout=10
+            )
             raise RickAndMortyAPIError(f"Failed to fetch data from Rick and Morty API: {str(e)}", 503)
 
 
@@ -183,7 +212,12 @@ def paginate_characters(characters: List[Dict], page: int, limit: int) -> Tuple[
 
 @app.route("/health", methods=["GET"])
 def health_check():
-    """Health check endpoint"""
+    """Health check endpoint with structured logging"""
+    logger.info(
+        "Health check performed",
+        status="healthy",
+        correlation_id=get_correlation_id()
+    )
     return jsonify({"status": "healthy"}), 200
 
 
@@ -254,7 +288,12 @@ def get_characters():
         }), 200
         
     except RickAndMortyAPIError as e:
-        logger.error(f"API error: {str(e)}")
+        logger.error(
+            "API error in get_filtered_characters",
+            error_message=str(e),
+            filters={"species": FILTERS["species"], "status": FILTERS["status"]},
+            page=1
+        )
         raise
 
 
@@ -328,27 +367,88 @@ def root():
     }), 200
 
 
+@app.before_request
+def log_request():
+    """Log incoming request with structured logging"""
+    correlation_id = request.headers.get('X-Correlation-ID', str(uuid.uuid4()))
+    set_correlation_id(correlation_id)
+    request.start_time = time.time()
+    
+    logger.info(
+        "Incoming request",
+        method=request.method,
+        path=request.path,
+        query_string=request.query_string.decode('utf-8') if request.query_string else None,
+        remote_addr=request.remote_addr,
+        correlation_id=correlation_id
+    )
+
+
+@app.after_request
+def log_response(response):
+    """Log response with structured logging"""
+    if hasattr(request, 'start_time'):
+        elapsed_time = time.time() - request.start_time
+    else:
+        elapsed_time = 0
+    
+    logger.info(
+        "Response sent",
+        method=request.method,
+        path=request.path,
+        status_code=response.status_code,
+        elapsed_time_ms=round(elapsed_time * 1000, 2),
+        correlation_id=get_correlation_id()
+    )
+    
+    return response
+
+
 @app.errorhandler(400)
 def bad_request(error):
     """Handle 400 Bad Request errors"""
+    logger.warning(
+        "Bad request error",
+        error_type="BadRequest",
+        path=request.path,
+        correlation_id=get_correlation_id()
+    )
     return jsonify({"error": "Bad request"}), 400
 
 
 @app.errorhandler(404)
 def not_found(error):
     """Handle 404 Not Found errors"""
+    logger.warning(
+        "Not found error",
+        error_type="NotFound",
+        path=request.path,
+        correlation_id=get_correlation_id()
+    )
     return jsonify({"error": "Endpoint not found"}), 404
 
 
 @app.errorhandler(429)
 def rate_limit_exceeded(error):
     """Handle 429 Rate Limit errors"""
+    logger.warning(
+        "Rate limit exceeded",
+        error_type="RateLimitExceeded",
+        path=request.path,
+        correlation_id=get_correlation_id()
+    )
     return jsonify({"error": "Rate limit exceeded"}), 429
 
 
 @app.errorhandler(503)
 def service_unavailable(error):
     """Handle 503 Service Unavailable errors"""
+    logger.error(
+        "Service unavailable error",
+        error_type="ServiceUnavailable",
+        path=request.path,
+        correlation_id=get_correlation_id()
+    )
     return jsonify({"error": "Service unavailable"}), 503
 
 
