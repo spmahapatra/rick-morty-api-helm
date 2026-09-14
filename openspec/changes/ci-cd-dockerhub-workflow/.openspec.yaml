@@ -1,0 +1,20 @@
+version: '1.0'
+name: 'CI/CD Docker Hub and Deployment Validation Workflows'
+description: |
+  Implement automated Docker image build/push on git tags and deployment validation workflows
+  with Docker Compose to ensure reliable container deployments to Docker Hub and Kubernetes.
+created: 2026-09-13
+archived: 2026-09-14
+status: archived
+labels:
+  - ci-cd
+  - docker
+  - deployment
+  - workflows
+artifacts:
+  proposal: proposal.md
+  specs:
+    - spec-docker-build-push.md
+    - spec-deployment-validation.md
+  design: design.md
+  tasks: tasks.md

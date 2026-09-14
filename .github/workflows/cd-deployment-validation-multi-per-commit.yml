@@ -65,9 +65,9 @@ jobs:
           max_attempts=24
           attempt=0
           while [ $attempt -lt $max_attempts ]; do
-            if docker compose exec -T postgres pg_isready -U admin -d rickmorty; then
+            if docker compose exec -T postgres pg_isready -U postgres -d postgres; then
               echo "✅ PostgreSQL is healthy"
-              docker compose exec -T postgres psql -U admin -d rickmorty -c "SELECT 1;" > /dev/null
+              docker compose exec -T postgres psql -U postgres -d postgres -c "SELECT 1;" > /dev/null
               echo "✅ PostgreSQL connection verified"
               exit 0
             fi

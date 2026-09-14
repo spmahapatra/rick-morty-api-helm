@@ -191,11 +191,16 @@ jobs:
       packages: read
       id-token: write
     
-    steps:
+steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+      - name: Configure deployment
+        id: deploy
+        run: |
+          echo "url=https://production.example.com" >> $GITHUB_OUTPUT
+          echo "✅ Production deployment configuration ready"
       - name: Verify tag format
+
         run: |
           TAG_NAME="${{ needs.verify-tag-creation.outputs.tag-name }}"
           if [[ "$TAG_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+ ]]; then

@@ -1,6 +1,6 @@
 # OpenSpec Capability Inventory
 
-**Last Updated:** 2026-09-13  
+**Last Updated:** 2026-09-14  
 **Status:** Active Capability Registry  
 
 This document tracks all archived changes and their promoted capability specifications.
@@ -78,7 +78,7 @@ Transform the Rick and Morty API wrapper from a basic Flask application into a p
 **Change ID:** `rick-morty-api-initial-spec`  
 **Archive Date:** Earlier (prior to current session)  
 **Status:** ✅ Archived  
-**Priority:** Medium  
+**Priority:** Medium
 
 **Capability Summary:**
 Initial specification of the Rick and Morty API wrapper Flask application.
@@ -88,6 +88,70 @@ Initial specification of the Rick and Morty API wrapper Flask application.
 
 **Durable Specification:**
 `openspec/specs/rick-morty-api/spec.md` (if available)
+
+---
+
+### 3. CI/CD Docker Hub and Deployment Validation Workflows
+
+**Change ID:** `ci-cd-dockerhub-workflow`  
+**Archive Date:** 2026-09-14  
+**Status:** ✅ Formalized & Archived  
+**Priority:** High
+
+**Capability Summary:**
+Implement automated Docker image build/push on git tags and deployment validation workflows with Docker Compose to ensure reliable container deployments to Docker Hub and Kubernetes.
+
+**Key Capabilities:**
+- Automated Image Build and Push to Docker Hub on semantic version tags
+- Multi-platform Docker image builds (linux/amd64, linux/arm64)
+- Docker Hub layer caching for faster builds
+- Deployment validation of complete docker-compose stack (PostgreSQL, Redis, API)
+- Health check verification for all services
+- Inter-service communication validation
+- Integration test execution against running stack
+- Diagnostic log collection and artifact upload
+
+**Durable Specification:**
+- **Main Spec:** `ci-cd-dockerhub-workflow-spec.md` (consolidated capability specification)
+- **Detailed Specs:**
+  - `spec-docker-build-push.md` - Docker Hub image build and push workflow
+  - `spec-deployment-validation.md` - Deployment validation workflow
+
+**Performance Targets:**
+- Image build time: < 10 minutes
+- Deployment validation: < 5 minutes (target), < 15 minutes (max)
+- Service startup: < 60 seconds for all services
+- Health checks: 120 seconds max wait time
+
+**Archive Location:**
+`openspec/changes/archive/ci-cd-dockerhub-workflow/`
+
+**Archived Artifacts:**
+- Proposal: Business justification and impact analysis
+- Design: Technical architecture and component design
+- Tasks: 31 implementation tasks with acceptance criteria
+- Change Metadata: `.openspec.yaml` with project details
+
+**Technology Stack:**
+- CI/CD Platform: GitHub Actions
+- Container Registry: Docker Hub (docker.io)
+- Container Runtime: Docker, docker-compose
+- Base Images: python:3.9-slim, postgres:15-alpine, redis:7-alpine
+- Build Tools: Docker Buildx, docker/build-push-action@v4
+- Registry Auth: Docker Hub Personal Access Tokens
+
+**Deployment Options:**
+1. Local Development: Docker Compose with local build
+2. Team Collaboration: Docker Compose with pre-built Docker Hub images
+3. Production: Kubernetes with Helm charts using Docker Hub images
+
+**Maintenance Notes:**
+- Refer to `ci-cd-dockerhub-workflow-spec.md` for configuration and operations
+- All implementation tasks documented in archived change
+- Release process: Tag with semantic version (`git tag v1.2.3 && git push origin v1.2.3`)
+- Image access: `docker pull docker.io/DOCKERHUB_USERNAME/rick-morty-api:1.2.3`
+- Debugging: Check GitHub Actions artifacts for deployment validation logs
+- Emergency rebuild: Use workflow_dispatch in GitHub Actions UI
 
 ---
 
@@ -103,6 +167,9 @@ openspec/specs/
 ├── 02-persistence.md                      ← Detailed persistence spec
 ├── 03-resilience-ratelimit.md             ← Detailed resilience spec
 ├── 04-observability.md                    ← Detailed observability spec
+├── ci-cd-dockerhub-workflow-spec.md       ← CI/CD workflows consolidated spec
+├── spec-docker-build-push.md              ← Docker Hub build workflow spec
+├── spec-deployment-validation.md          ← Deployment validation workflow spec
 └── rick-morty-api/
     └── spec.md                             ← Initial API spec (if available)
 ```
@@ -121,6 +188,14 @@ openspec/changes/archive/
 │       ├── 02-persistence.md
 │       ├── 03-resilience-ratelimit.md
 │       └── 04-observability.md
+├── ci-cd-dockerhub-workflow/
+│   ├── .openspec.yaml                    ← Change metadata
+│   ├── proposal.md                       ← Business justification
+│   ├── design.md                         ← Technical design
+│   ├── tasks.md                          ← Implementation tasks (31 total)
+│   └── specs/                            ← Original spec files
+│       ├── spec-docker-build-push.md
+│       └── spec-deployment-validation.md
 └── rick-morty-api-initial-spec/
     ├── design.md
     ├── proposal.md
@@ -198,6 +273,7 @@ When archiving new changes to OpenSpec:
 Proposed → Specified → Implementing → Complete → Archived → Maintained
 
 api-resilience-enhancement:  ✅ Complete → ✅ Archived (2026-09-13)
+ci-cd-dockerhub-workflow:    ✅ Complete → ✅ Archived (2026-09-14)
 ```
 
 Once a capability is archived and formalized, it enters the maintenance phase where:
