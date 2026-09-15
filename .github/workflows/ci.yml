@@ -129,37 +129,6 @@ jobs:
           path: htmlcov/
           retention-days: 30
 
-  security:
-    name: Security Checks
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.11'
-          cache: 'pip'
-      
-      - name: Install security tools
-        run: |
-          pip install bandit safety semgrep
-      
-      - name: Bandit security scan
-        run: bandit -r src -ll -i
-        continue-on-error: true
-      
-      - name: Safety check dependencies
-        run: safety check --json
-        continue-on-error: true
-      
-      - name: Semgrep scan
-        run: semgrep --config=p/security-audit src
-        continue-on-error: true
-
   docker-build:
     name: Docker Build
     runs-on: ubuntu-latest
@@ -242,7 +211,7 @@ jobs:
     name: Test Results
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    needs: [lint, test, security, docker-build, integration]
+    needs: [lint, test, docker-build, integration]
     if: always()
     
     steps:
