@@ -1,0 +1,51 @@
+#!/bin/bash
+# .git/hooks/pre-push
+
+while read local_ref local_sha remote_ref remote_sha; do
+  if [[ "$remote_ref" == refs/tags/* ]]; then
+    TAG_NAME=${remote_ref#refs/tags/}
+    echo "==========================================="
+    echo "🏷️  Tag push detected: $TAG_NAME"
+    echo "==========================================="
+    
+    echo "1. Building Docker Images (NO CACHE)..."
+    if ! docker compose build --no-cache; then
+      echo "❌ Build failed! Push aborted."
+      exit 1
+    fi
+    
+    echo "2. Running Pre-Flight Validation Script inside Container..."
+    # We run the script inside a temporary container to ensure the /app environment is correct
+    if ! docker compose run --rm rick-morty-api bash ./docker_build_validation.sh; then
+      echo "❌ Validation script failed! Push aborted."
+      exit 1
+    fi
+    
+    echo "3. Spinning up full environment (App + Postgres + Redis)..."
+    if ! docker compose up -d; then
+      echo "❌ Failed to start containers! Push aborted."
+      docker compose down
+      exit 1
+    fi
+    
+    echo "Waiting for services to become healthy..."
+    sleep 10
+    
+    echo "4. Running Integration Tests..."
+    docker cp tests/ rick-morty-api:/app/tests/
+    if ! docker compose exec -e FLASK_ENV=development -e APP_ENV=testing -T rick-morty-api sh -c "python -m pip install --quiet pytest pytest-asyncio && python -m pytest tests/ -v"; then
+      echo "❌ Integration tests failed! Push aborted."
+      docker compose down
+      exit 1
+    fi
+    
+    echo "✅ All validations and tests passed! Tearing down..."
+    docker compose down
+    
+    echo "==========================================="
+    echo "🚀 Tag $TAG_NAME is perfectly validated!"
+    echo "==========================================="
+  fi
+done
+
+exit 0

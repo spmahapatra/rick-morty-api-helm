@@ -1,0 +1,36 @@
+#!/bin/bash
+# .git/hooks/pre-commit
+
+echo "==========================================="
+echo "Running Local Pre-Commit Validations..."
+echo "==========================================="
+
+echo "1. Checking Documentation Organization..."
+ROOT_MDS=$(find . -maxdepth 1 -name "*.md" -not -name "README.md" -not -name "GEMINI.md" -type f)
+ROOT_COUNT=$(echo "$ROOT_MDS" | grep -c . || true)
+if [ $ROOT_COUNT -gt 0 ]; then
+  echo "❌ Error: Found $ROOT_COUNT markdown file(s) in root directory!"
+  echo "All documentation (except README.md and GEMINI.md) must be in docs/."
+  echo "Files found:"
+  echo "$ROOT_MDS"
+  echo "Commit aborted."
+  exit 1
+else
+  echo "✅ Docs organized correctly."
+fi
+
+echo "2. Running Security Scans (Bandit)..."
+if command -v bandit &> /dev/null; then
+  if ! bandit -r src -ll -i -q; then
+    echo "❌ Bandit security scan failed! Fix the vulnerabilities."
+    exit 1
+  fi
+  echo "✅ Bandit passed."
+else
+  echo "⚠️  Bandit not installed locally, skipping."
+fi
+
+echo "==========================================="
+echo "✅ All local pre-commit checks passed! Committing..."
+echo "==========================================="
+exit 0
