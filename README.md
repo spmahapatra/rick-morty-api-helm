@@ -2,7 +2,7 @@
 
 ![Project Banner](docs/assets/banner.jpg)
 
-![Build Status](https://img.shields.io/github/actions/workflow/status/spmahapatra/rick-morty-api-helm/ci.yml?branch=main&style=for-the-badge)
+![Build Status](https://img.shields.io/github/actions/workflow/status/spmahapatra/rick-morty-api-helm/ci.yml?branch=master&style=for-the-badge)
 ![Version](https://img.shields.io/github/v/release/spmahapatra/rick-morty-api-helm?include_prereleases&sort=semver&style=for-the-badge)
 ![Docker Size](https://img.shields.io/docker/image-size/spmahapatra/rick-morty-api/latest?style=for-the-badge)
 ![License](https://img.shields.io/github/license/spmahapatra/rick-morty-api-helm?style=for-the-badge)
