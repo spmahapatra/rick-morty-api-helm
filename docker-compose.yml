@@ -11,7 +11,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-admin} -d ${DB_NAME:-rickmorty}"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-admin} -d ${DB_NAME:-rickmorty}]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -41,7 +41,7 @@ services:
     environment:
       - FLASK_ENV=${FLASK_ENV:-production}
       - FLASK_DEBUG=${FLASK_DEBUG:-false}
-      - DATABASE_URL="postgresql://${DB_USER:-admin}:${DB_PASSWORD:?}@postgres:5432/${DB_NAME:-rickmorty}"
+      - DATABASE_URL=postgresql://${DB_USER:-admin}:${DB_PASSWORD:?}@postgres:5432/${DB_NAME:-rickmorty}
       - REDIS_URL=redis://redis:6379/0
       - RICK_AND_MORTY_API_BASE_URL=https://rickandmortyapi.com/api
       - LOG_FORMAT=${LOG_FORMAT:-json}
