@@ -16,7 +16,7 @@ while read local_ref local_sha remote_ref remote_sha; do
     
     echo "2. Running Pre-Flight Validation Script inside Container..."
     # We run the script inside a temporary container to ensure the /app environment is correct
-    if ! docker compose run --rm rick-morty-api bash ./docker_build_validation.sh; then
+    if ! docker compose run --rm rick-morty-api bash ./scripts/docker_build_validation.sh; then
       echo "❌ Validation script failed! Push aborted."
       exit 1
     fi
