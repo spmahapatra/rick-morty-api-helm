@@ -32,7 +32,7 @@ while read local_ref local_sha remote_ref remote_sha; do
     sleep 10
     
     echo "4. Running Integration Tests..."
-    docker cp tests/ rick-morty-api:/app/tests/
+    
     if ! docker compose exec -e FLASK_ENV=development -e APP_ENV=testing -T rick-morty-api sh -c "python -m pip install --quiet pytest pytest-asyncio && python -m pytest tests/ -v"; then
       echo "❌ Integration tests failed! Push aborted."
       docker compose down
