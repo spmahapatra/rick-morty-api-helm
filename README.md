@@ -1,15 +1,14 @@
 # Rick and Morty Character API
 
+![Project Banner](docs/assets/banner.jpg)
+
+![Build Status](https://img.shields.io/github/actions/workflow/status/spmahapatra/rick-morty-api-helm/ci.yml?branch=main&style=for-the-badge)
+![Version](https://img.shields.io/github/v/release/spmahapatra/rick-morty-api-helm?include_prereleases&sort=semver&style=for-the-badge)
+![Docker Size](https://img.shields.io/docker/image-size/spmahapatra/rick-morty-api/latest?style=for-the-badge)
+![License](https://img.shields.io/github/license/spmahapatra/rick-morty-api-helm?style=for-the-badge)
+
 A RESTful API application built with Python and Flask that queries the Rick and Morty API to retrieve filtered character data.
 
-## 🛠️ AI-Powered Development Support
-
-This project supports **multiple AI-powered code editors**:
-- ✅ **GitHub Copilot**: See [`.github/agents/`](.github/agents/) for agent definitions
-- ✅ **Kilo Code**: Use slash commands like `/opsx-explore`, `/opsx-propose`
-- ✅ **Default VS Code**: Works with standard editor features
-
-For detailed compatibility information, see [DUAL_COMPATIBILITY_GUIDE.md](DUAL_COMPATIBILITY_GUIDE.md).
 
 ## Features
 
