@@ -207,6 +207,12 @@ class CacheMiddleware:
         g.cache_status = cache_status
         g.cached_data = cached_data
         g.cache_enabled = self.cache_backend is not None
+
+        # Return cached response if HIT
+        if cache_status == "HIT" and cached_data is not None:
+            # Depending on how it's stored, handle dictionary with "data" key or raw data
+            response_data = cached_data.get("data") if isinstance(cached_data, dict) and "data" in cached_data else cached_data
+            return jsonify(response_data)
     
     def after_request(self, response):
         """

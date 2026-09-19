@@ -30,7 +30,40 @@ else
   echo "⚠️  Bandit not installed locally, skipping."
 fi
 
+echo "3. Syncing AI Enterprise Instructions..."
+~/.gemini/config/scripts/export-ai-rules.py > /dev/null
+
+# Copy AI rules directly into the repo so Copilot/Cursor detect them natively
+cp -r ~/.gemini/config/exports/github-copilot/.github/ . 2>/dev/null || true
+cp -r ~/.gemini/config/exports/cursor-ide/.cursor/ . 2>/dev/null || true
+
+# Copy Claude, ChatGPT, and Ollama assets to docs/ai-instructions
+mkdir -p docs/ai-instructions/
+cp -r ~/.gemini/config/exports/claude-projects/ docs/ai-instructions/ 2>/dev/null || true
+cp -r ~/.gemini/config/exports/chatgpt-custom-gpts/ docs/ai-instructions/ 2>/dev/null || true
+cp -r ~/.gemini/config/exports/ollama/ docs/ai-instructions/ 2>/dev/null || true
+
+# Automatically stage the synced AI instructions
+git add .github/ .cursor/ docs/ai-instructions/
+
 echo "==========================================="
 echo "✅ All local pre-commit checks passed! Committing..."
 echo "==========================================="
 exit 0
+
+# ==========================================
+# 4. Global AI Dotfiles Auto-Sync
+# ==========================================
+echo "4. Checking global ~/ai-dotfiles for uncommitted changes..."
+cd ~/ai-dotfiles || exit 0
+if [[ -n $(git status -s) ]]; then
+    echo "   -> Found changes in global AI dotfiles! Auto-committing them now..."
+    ./scripts/export-ai-rules.py > /dev/null 2>&1
+    git add .
+    git commit -m "chore: auto-sync AI dotfiles (triggered by project commit)" > /dev/null
+    echo "   ✅ Global dotfiles successfully backed up."
+else
+    echo "   ✅ Global dotfiles are already up to date."
+fi
+# Return to the original project directory to finish the project commit
+cd - > /dev/null

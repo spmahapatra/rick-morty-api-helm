@@ -1,18 +1,17 @@
+name: rick-morty-api
 
 services:
   postgres:
     image: postgres:15-alpine
     container_name: rick-morty-postgres
     environment:
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: rickmorty
-    ports:
-      - "5432:5432"
+      POSTGRES_USER: ${DB_USER:-admin}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Fatal error: DB_PASSWORD is missing}
+      POSTGRES_DB: ${DB_NAME:-rickmorty}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U admin -d rickmorty"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-admin} -d ${DB_NAME:-rickmorty}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -23,8 +22,6 @@ services:
   redis:
     image: redis:7-alpine
     container_name: rick-morty-redis
-    ports:
-      - "6379:6379"
     volumes:
       - redis_data:/data
     healthcheck:
@@ -41,16 +38,14 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: rick-morty-api
-    ports:
-      - "5000:5000"
     environment:
-      - FLASK_ENV=production
-      - FLASK_DEBUG=false
-      - DATABASE_URL=postgresql://admin:password@postgres:5432/rickmorty
+      - FLASK_ENV=${FLASK_ENV:-production}
+      - FLASK_DEBUG=${FLASK_DEBUG:-false}
+      - DATABASE_URL=postgresql://${DB_USER:-admin}:${DB_PASSWORD:?}@postgres:5432/${DB_NAME:-rickmorty}
       - REDIS_URL=redis://redis:6379/0
       - RICK_AND_MORTY_API_BASE_URL=https://rickandmortyapi.com/api
-      - LOG_FORMAT=json
-      - LOG_LEVEL=INFO
+      - LOG_FORMAT=${LOG_FORMAT:-json}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
     depends_on:
       postgres:
         condition: service_healthy

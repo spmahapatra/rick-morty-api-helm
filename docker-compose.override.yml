@@ -1,0 +1,15 @@
+services:
+  postgres:
+    ports:
+      - "${HOST_DB_PORT:-127.0.0.1:5432}:5432"
+
+  redis:
+    ports:
+      - "${HOST_REDIS_PORT:-127.0.0.1:6379}:6379"
+
+  rick-morty-api:
+    ports:
+      - "${HOST_API_PORT:-5000}:5000"
+    volumes:
+      - ./src:/app/src
+      - ./tests:/app/tests
