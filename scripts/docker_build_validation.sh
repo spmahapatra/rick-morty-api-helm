@@ -9,7 +9,7 @@
 
 set -e
 
-PROJECT_DIR="/app"
+PROJECT_DIR="."
 VALIDATION_LOG="$PROJECT_DIR/docker_build_validation.log"
 
 # Colors
@@ -68,7 +68,7 @@ validate_application_imports() {
     
     python3 -c "
 import sys
-sys.path.insert(0, '/app')
+sys.path.insert(0, '.')
 
 try:
     # Test importing app
@@ -101,10 +101,10 @@ validate_database_schema() {
     
     python3 -c "
 import sys
-sys.path.insert(0, '/app')
+sys.path.insert(0, '.')
 
 try:
-    from init_db import validate_database_url, init_database
+    from scripts.init_db import validate_database_url, init_database
     import os
     
     db_url = os.getenv('DATABASE_URL', 'postgresql://admin:password@postgres:5432/rickmorty')
@@ -137,7 +137,7 @@ validate_endpoints() {
     
     python3 -c "
 import sys
-sys.path.insert(0, '/app')
+sys.path.insert(0, '.')
 
 try:
     from app import app
@@ -191,7 +191,7 @@ validate_cache_backend() {
     
     python3 -c "
 import sys
-sys.path.insert(0, '/app')
+sys.path.insert(0, '.')
 
 try:
     from config import get_cache_backend
@@ -248,7 +248,7 @@ validate_logging() {
     
     python3 -c "
 import sys
-sys.path.insert(0, '/app')
+sys.path.insert(0, '.')
 
 try:
     from src.observability.logging import setup_logging, StructuredLogger
