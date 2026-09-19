@@ -59,3 +59,12 @@ htmlcov/
 # OS
 .DS_Store
 Thumbs.db
+
+# AI and Local Tools
+.agents/
+.cursor/
+.kilo/
+openspec/
+
+# AI Configuration
+GEMINI.md
