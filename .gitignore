@@ -65,6 +65,12 @@ Thumbs.db
 .cursor/
 .kilo/
 openspec/
+.githooks/
+.github/agents/
+.github/skills/
+.github/prompts/
+.github/copilot-instructions.md
+.github/workflows/copilot-setup-steps.yml
 
 # AI Configuration
 GEMINI.md
