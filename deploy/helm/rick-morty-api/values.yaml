@@ -1,0 +1,38 @@
+replicaCount: 2
+
+image:
+  repository: rick-morty-api
+  pullPolicy: IfNotPresent
+  tag: "1.0.0"
+
+service:
+  type: ClusterIP
+  port: 5000
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+env:
+  FLASK_ENV: "production"
+  FLASK_DEBUG: "false"
+  LOG_FORMAT: "json"
+  LOG_LEVEL: "INFO"
+  RICK_AND_MORTY_API_BASE_URL: "https://rickandmortyapi.com/api"
+  CACHE_ENABLED: "true"
+  CACHE_TTL_SECONDS: "300"
+  REDIS_URL: "redis://rick-morty-redis:6379/0"
+
+probes:
+  liveness:
+    path: /health
+    initialDelaySeconds: 15
+    periodSeconds: 20
+  readiness:
+    path: /health
+    initialDelaySeconds: 5
+    periodSeconds: 10

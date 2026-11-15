@@ -1,0 +1,78 @@
+name: rick-morty-api
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: rick-morty-postgres
+    environment:
+      POSTGRES_USER: ${DB_USER:-admin}
+      POSTGRES_PASSWORD: "${DB_PASSWORD:?Fatal error: DB_PASSWORD is missing}"
+      POSTGRES_DB: ${DB_NAME:-rickmorty}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-admin} -d ${DB_NAME:-rickmorty}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - rick-morty-network
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: rick-morty-redis
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - rick-morty-network
+    restart: unless-stopped
+
+  rick-morty-api:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
+    container_name: rick-morty-api
+    environment:
+      - FLASK_ENV=${FLASK_ENV:-production}
+      - FLASK_DEBUG=${FLASK_DEBUG:-false}
+      - DATABASE_URL=postgresql://${DB_USER:-admin}:${DB_PASSWORD:?}@postgres:5432/${DB_NAME:-rickmorty}
+      - REDIS_URL=redis://redis:6379/0
+      - RICK_AND_MORTY_API_BASE_URL=https://rickandmortyapi.com/api
+      - LOG_FORMAT=${LOG_FORMAT:-json}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:5000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    networks:
+      - rick-morty-network
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  rick-morty-network:
+    driver: bridge
